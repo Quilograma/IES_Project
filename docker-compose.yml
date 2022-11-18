@@ -1,0 +1,72 @@
+version: '3.1'
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.0.1
+    container_name: zookeeper
+    ports:
+        - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - mysqlcomposenetwork
+  broker:
+    image: confluentinc/cp-kafka:7.0.1
+    container_name: broker
+    depends_on:
+      - zookeeper
+    ports:
+      - "29092:29092"
+      - "9092:9092"
+      - "9101:9101"
+    networks:
+      - mysqlcomposenetwork
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+  db:
+    image: mysql:5.7
+    restart: unless-stopped
+    container_name: mysqldb
+    environment:
+      MYSQL_DATABASE: projectdb
+      MYSQL_ROOT_PASSWORD: master
+      MYSQL_USER: martim
+      MYSQL_PASSWORD: Martim123
+    networks:
+      - mysqlcomposenetwork
+    volumes:
+      - ./data:/data
+    ports:
+      - 100:100
+  adminer:
+    image: adminer
+    restart: unless-stopped
+    container_name: adminercontainer
+    ports:
+      - 8080:8080
+    networks:
+      - mysqlcomposenetwork
+    depends_on:
+      - db
+  app:
+    container_name: myapp
+    networks:
+      - mysqlcomposenetwork
+    build: ./
+    depends_on:
+      - db
+      - adminercontainer
+    ports:
+    - 5001:5000
+networks: 
+  mysqlcomposenetwork:
+    driver: bridge
