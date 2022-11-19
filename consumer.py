@@ -42,6 +42,7 @@ if __name__ == '__main__':
                 continue
             data=msg.value().decode('utf-8')
             db.create_all()
+            print(data,'ok')
             visitor=Visitor(data['accessed_at'],data['user_id'],data['page_id'])
             db.session.add(visitor)
             db.session.commit()
