@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 import pymysql
 import datetime
 import yaml
+import json
 
 
 ################ kafka consumer
@@ -25,7 +26,9 @@ print(connection_str)
 db = SQLAlchemy(app)
 
 class Visitor(db.Model):
-    accessed_at=db.Column(db.Float,primary_key=True)
+    __tablename__ = 'Visitors'
+    id = db.Column(db.Integer, primary_key=True)
+    accessed_at=db.Column(db.Float)
     user_id=db.Column(db.Integer)
     page_id=db.Column(db.Integer)
 
@@ -40,10 +43,13 @@ if __name__ == '__main__':
             if msg.error():
                 print('Error: {}'.format(msg.error()))
                 continue
-            data=msg.value().decode('utf-8')
+            data=json.loads(msg.value().decode('utf-8'))
             db.create_all()
             print(data,'ok')
-            visitor=Visitor(data['accessed_at'],data['user_id'],data['page_id'])
+            print(type(data))
+            print(data.keys())
+            print(data['accessed_at'],data['user_id'],data['page_id'])
+            visitor=Visitor(accessed_at=data['accessed_at'],user_id=data['user_id'], page_id=data['page_id'])
             db.session.add(visitor)
             db.session.commit()
             print(data)
