@@ -1,3 +1,3 @@
 #!/bin/bash
-python3 producer.py &
-python3 consumer.py 
+python3 ./Kafka_producer/producer.py &
+python3 ./Kafka_consumer/main.py 
