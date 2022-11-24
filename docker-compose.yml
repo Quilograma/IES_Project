@@ -44,7 +44,7 @@ services:
     networks:
       - mysqlcomposenetwork
     volumes:
-      - ./data:/data
+      - mysql-data:/var/lib/mysql
   adminer:
     image: adminer
     restart: unless-stopped
@@ -62,9 +62,12 @@ services:
     build: ./
     depends_on:
       - db
-      - adminercontainer
+      - adminer
     ports:
     - 5001:5000
+
 networks: 
   mysqlcomposenetwork:
     driver: bridge
+volumes:
+  mysql-data:
