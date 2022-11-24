@@ -1,7 +1,11 @@
-from Model.flask_mysql_conn import db,app,Visitor
 from Consumer.kafka_consumer import c
 import json
 import datetime
+from Model.models import Visitor
+from Utils.db import db
+from Config.app_config import app
+db.init_app(app)
+
 
 
 if __name__ == '__main__':
@@ -18,8 +22,5 @@ if __name__ == '__main__':
                 continue
             data=json.loads(msg.value().decode('utf-8'))
             visitor=Visitor(accessed_at=datetime.datetime.utcfromtimestamp(data['accessed_at']),user_id=data['user_id'], page_id=data['page_id'])
-            db.session.add(visitor)
-            db.session.commit()
-            print(data)
-            print(Visitor.query.all())
+            visitor.save()
             #app.run(host="0.0.0.0", debug=False,port=85)

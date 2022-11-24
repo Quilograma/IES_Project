@@ -1,5 +1,0 @@
-mysql_host: 'mysqldb'
-mysql_user: 'martim'
-# Enter your password in field below
-mysql_password: 'Martim123'
-mysql_db: 'projectdb'
