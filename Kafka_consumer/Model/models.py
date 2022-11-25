@@ -1,6 +1,5 @@
 import sys
 import os
-
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
@@ -28,3 +27,10 @@ class Visitor(db.Model):
     @classmethod
     def get_by_page(cls,_page_id):
         return cls.query.filter_by(page_id=_page_id).all()
+
+    @classmethod
+    def get_by_user(cls,_user_id):
+        return cls.query.filter_by(user_id=_user_id).all()
+            
+    def to_dict(self):
+      return {"id": self.id, "accessed_at": str(self.accessed_at),'user_id':self.user_id,'page_id':self.page_id}

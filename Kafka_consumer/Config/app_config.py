@@ -12,3 +12,4 @@ app = Flask(__name__)
 #mysql+driver://username:password@host:port/database_name
 connection_str='mysql+pymysql://'+db['mysql_user']+':'+db['mysql_password']+'@'+db['mysql_host']+'/'+db['mysql_db']
 app.config['SQLALCHEMY_DATABASE_URI']=connection_str
+app.config['SECRET_KEY'] = os.urandom(24)

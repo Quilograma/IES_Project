@@ -4,7 +4,10 @@ import datetime
 from Model.models import Visitor
 from Utils.db import db
 from Config.app_config import app
+from flask_httpauth import HTTPDigestAuth
+from flask_sqlalchemy import SQLAlchemy
 db.init_app(app)
+
 
 
 
