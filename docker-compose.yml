@@ -45,6 +45,22 @@ services:
       - mysqlcomposenetwork
     volumes:
       - mysql-data:/var/lib/mysql
+    ports:
+      -  33306:3306
+  grafana:
+    image: grafana/grafana
+    environment:
+      - GF_DATABASE_USER=grafana
+      - GF_DATABASE_PASSWORD=password
+      - GF_DATABASE_MAX_OPEN_CONN=300
+    ports:
+      - 3000:3000
+    volumes:
+     - grafana-data:/var/lib/grafana
+    depends_on: 
+      - db
+    networks:
+      - mysqlcomposenetwork
   adminer:
     image: adminer
     restart: unless-stopped
@@ -71,3 +87,4 @@ networks:
     driver: bridge
 volumes:
   mysql-data:
+  grafana-data:

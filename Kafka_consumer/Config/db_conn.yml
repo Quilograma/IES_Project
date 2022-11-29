@@ -1,4 +1,4 @@
-mysql_host: 'mysqldb'
+mysql_host: 'mysqldb:3306'
 mysql_user: 'martim'
 # Enter your password in field below
 mysql_password: 'Martim123'
