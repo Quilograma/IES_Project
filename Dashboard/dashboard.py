@@ -11,10 +11,14 @@ import datetime
 
 REFRESH_RATE_SECONDs=1
 app = dash.Dash(__name__)
-app.layout = html.Div(
+app.layout = html.Div([
+
     html.Div([
+        html.Div([
         html.H1('MyDashboard',style={'textAlign': 'center'}),
-        html.Div('Pick a desired refresh rate in seconds',style={'textAlign': 'center'}),
+        html.H3('Pick a desired refresh rate in seconds',style={'textAlign': 'center'}),
+       ],id = "header", className = "six column", style = {"margin-bottom": "25px"}),
+       ],className = "row flex-display"),
         dcc.Slider(1, 60, value=5,id='my-slider',
         marks={
         1: {'label': '1'},
@@ -23,18 +27,37 @@ app.layout = html.Div(
         40: {'label': '40'},
         60: {'label':'60'}
     }),
-    html.Div(id='live-update-text-currentRR',style={'font-weight': 'bold','textAlign':'center'}),
-        html.Div(id='live-update-text',style={'textAlign': 'center'}),
-        dcc.Graph(id='live-update-graph'),
+
+    html.Div([
+        html.Div([
+        html.H3(id='live-update-text-currentRR',style={'font-weight': 'bold','textAlign':'center'}),
+        html.H3(id='live-update-text',style={'textAlign': 'center'})],className = "six column", style = {"margin-bottom": "25px"}),
+        ],className = "row flex-display"),
+
+    html.Div([
+        html.Div([
+        dcc.Graph(id='live-update-graph',config = {'displayModeBar': 'hover'})], className="create_container full columns")]
+        ,className="row flex-display"),
         dcc.Interval(
             id='interval-component',
             interval=REFRESH_RATE_SECONDs*1000, # in milliseconds
             n_intervals=0
         ),
-        dcc.Dropdown([i+1 for i in range(10)], '1', id='page_id-dropdown'),
-        dcc.Graph(id='live-update-graph-timeseries')
-    ])
-)
+    html.Div([
+        html.Div([
+        html.P('Select page id',className = 'fix_label'),
+        dcc.Dropdown([i+1 for i in range(10)], '1', id='choose-page_id-dropdown'),
+        html.P('Select group by',className = 'fix_label'),
+        dcc.Dropdown(options=[
+        {'label':'Hour','value':'H'},
+       {'label': 'Day', 'value': 'D'},
+       {'label': 'Week', 'value': 'W'},
+       {'label': 'Month', 'value': 'M'},
+   ], value='H', id='choose-groupby-dropdown')],className = "create_container three columns"),
+        html.Div([
+        dcc.Graph(id='live-update-graph-timeseries')],className = "create_container nine columns")
+        ],className = "row flex-display")
+    ],id = "mainContainer", style = {"display": "flex", "flex-direction": "column"})
 
 @app.callback(Output('interval-component','interval'),Input('my-slider', 'value'))
 def update_refresh_rate(input):
@@ -59,13 +82,13 @@ def update_graph_live(n):
     formated_time=time_now.strftime("%m-%d-%Y %H:%M:%S")
     return fig,[html.Span('Last refreshed at {}'.format(formated_time))]
 
-@app.callback(Output('live-update-graph-timeseries','figure'),[Input('page_id-dropdown','value'),Input('interval-component', 'n_intervals')])
-def update_graph_timeseries(dropdown_value,n):
+@app.callback(Output('live-update-graph-timeseries','figure'),[Input('choose-page_id-dropdown','value'),Input('choose-groupby-dropdown','value'),Input('interval-component', 'n_intervals')])
+def update_graph_timeseries(dropdown_value,groupby_drop,n):
     url = 'http://localhost:5001/Visitors?page_id='+str(dropdown_value)
     r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
     df_data= pd.DataFrame.from_dict(json.loads(r.text))
     df_data['accessed_at'] = pd.to_datetime(df_data['accessed_at'])
-    df_counts=df_data.groupby([pd.Grouper(key='accessed_at', freq='H')]).count()
+    df_counts=df_data.groupby([pd.Grouper(key='accessed_at', freq=groupby_drop)]).count()
     df_counts.reset_index(inplace=True)
     fig = px.line(df_counts, x='accessed_at', y='page_id',title="Automatic Labels Based on Data Frame Column Names",
     labels={'page_id':'#visitors'})
