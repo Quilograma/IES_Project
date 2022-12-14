@@ -71,14 +71,14 @@ body {
   
   /* Track */
   ::-webkit-scrollbar-track {
-    background: #272B30 !important;
+    background: whitesmoke !important;
     border-radius: 10px !important;
     display: block !important;
   }
   
   /* Handle */
   ::-webkit-scrollbar-thumb {
-    background: #010915;
+    background: white;
   }
   
   /* Handle on hover */

@@ -8,6 +8,7 @@ from dash.dependencies import Input, Output
 import plotly.graph_objects as go
 import pandas as pd
 import datetime
+from datetime import date
 
 REFRESH_RATE_SECONDs=1
 app = dash.Dash(__name__)
@@ -36,6 +37,7 @@ app.layout = html.Div([
 
     html.Div([
         html.Div([
+        html.P('Most recent 10 Visitors',className = 'fix_label'),
         dcc.Graph(id='live-update-graph',config = {'displayModeBar': 'hover'})], className="create_container full columns")]
         ,className="row flex-display"),
         dcc.Interval(
@@ -53,7 +55,13 @@ app.layout = html.Div([
        {'label': 'Day', 'value': 'D'},
        {'label': 'Week', 'value': 'W'},
        {'label': 'Month', 'value': 'M'},
-   ], value='H', id='choose-groupby-dropdown')],className = "create_container three columns"),
+   ], value='H', id='choose-groupby-dropdown'),
+        html.P('Filter by datetime ',className = 'fix_label'),
+        dcc.DatePickerRange(
+        id='filterbydate',
+        end_date=datetime.datetime.now().date(),
+        start_date=datetime.datetime.now().date()
+    )],className = "create_container four columns"),
         html.Div([
         dcc.Graph(id='live-update-graph-timeseries')],className = "create_container nine columns")
         ],className = "row flex-display")
@@ -67,7 +75,7 @@ def update_refresh_rate(input):
 def current_RR(input):
     return 'Current refresh rate: {}'.format(input)
 
-@app.callback([Output('live-update-graph', 'figure'),Output('live-update-text','children')],
+@app.callback([Output('live-update-graph', 'figure'),Output('live-update-text','children'),Output('filterbydate','end_date')],
               Input('interval-component', 'n_intervals'))
 def update_graph_live(n):
     url = 'http://localhost:5001/Visitors'
@@ -80,20 +88,27 @@ def update_graph_live(n):
                      ])
     time_now=datetime.datetime.now()
     formated_time=time_now.strftime("%m-%d-%Y %H:%M:%S")
-    return fig,[html.Span('Last refreshed at {}'.format(formated_time))]
+    return fig,[html.Span('Last refreshed at {}'.format(formated_time))],datetime.datetime.now().date()
 
-@app.callback(Output('live-update-graph-timeseries','figure'),[Input('choose-page_id-dropdown','value'),Input('choose-groupby-dropdown','value'),Input('interval-component', 'n_intervals')])
-def update_graph_timeseries(dropdown_value,groupby_drop,n):
+@app.callback(Output('live-update-graph-timeseries','figure'),[Input('choose-page_id-dropdown','value'),Input('choose-groupby-dropdown','value'),Input('interval-component', 'n_intervals'),Input('filterbydate', 'start_date'),
+    Input('filterbydate', 'end_date')])
+def update_graph_timeseries(dropdown_value,groupby_drop,n,start_date,end_date):
+    end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d')+datetime.timedelta(days=1)
+    start_date = datetime.datetime.strptime(start_date, '%Y-%m-%d')
+
     url = 'http://localhost:5001/Visitors?page_id='+str(dropdown_value)
     r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
     df_data= pd.DataFrame.from_dict(json.loads(r.text))
+
     df_data['accessed_at'] = pd.to_datetime(df_data['accessed_at'])
+    mask = (df_data['accessed_at'] >= start_date) & (df_data['accessed_at'] <= end_date)
+    df_data=df_data.loc[mask]
     df_counts=df_data.groupby([pd.Grouper(key='accessed_at', freq=groupby_drop)]).count()
     df_counts.reset_index(inplace=True)
-    fig = px.line(df_counts, x='accessed_at', y='page_id',title="Automatic Labels Based on Data Frame Column Names",
+    fig = px.line(df_counts, x='accessed_at', y='page_id',title="Accesses for page id {} from {} to {} by {}".format(dropdown_value,start_date.date(),end_date.date(),groupby_drop),
     labels={'page_id':'#visitors'})
     time_now=datetime.datetime.now()
-    formated_time=time_now.strftime("%m-%d-%Y %H:%M:%S")
+    formated_time=time_now.strftime("%m-%d-%Y %H:%M:%S.%f")
     fig.update_layout(xaxis_range=[df_counts['accessed_at'].min(),formated_time])
     return fig
 
