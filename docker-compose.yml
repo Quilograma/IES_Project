@@ -81,6 +81,18 @@ services:
       - adminer
     ports:
     - 5001:5000
+  dashboard:
+    container_name: my_dashboard
+    networks:
+      - mysqlcomposenetwork
+    build:
+      context: ./Dashboard
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+      - app
+    ports:
+      - 10000:10001
 
 networks: 
   mysqlcomposenetwork:
