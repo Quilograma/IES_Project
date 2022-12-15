@@ -37,7 +37,7 @@ app.layout = html.Div([
 
     html.Div([
         html.Div([
-        html.P('Most recent 10 Visitors',className = 'fix_label'),
+        html.P('Most recent 10 Visitors',className = 'fix_label',style={'textAlign': 'center'}),
         dcc.Graph(id='live-update-graph',config = {'displayModeBar': 'hover'})], className="create_container full columns")]
         ,className="row flex-display"),
         dcc.Interval(
@@ -75,7 +75,7 @@ def update_refresh_rate(input):
 def current_RR(input):
     return 'Current refresh rate: {}'.format(input)
 
-@app.callback([Output('live-update-graph', 'figure'),Output('live-update-text','children'),Output('filterbydate','end_date')],
+@app.callback([Output('live-update-graph', 'figure'),Output('live-update-text','children')],
               Input('interval-component', 'n_intervals'))
 def update_graph_live(n):
     url = 'http://localhost:5001/Visitors'
@@ -88,7 +88,7 @@ def update_graph_live(n):
                      ])
     time_now=datetime.datetime.now()
     formated_time=time_now.strftime("%m-%d-%Y %H:%M:%S")
-    return fig,[html.Span('Last refreshed at {}'.format(formated_time))],datetime.datetime.now().date()
+    return fig,[html.Span('Last refreshed at {}'.format(formated_time))]
 
 @app.callback(Output('live-update-graph-timeseries','figure'),[Input('choose-page_id-dropdown','value'),Input('choose-groupby-dropdown','value'),Input('interval-component', 'n_intervals'),Input('filterbydate', 'start_date'),
     Input('filterbydate', 'end_date')])

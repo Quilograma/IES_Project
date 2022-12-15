@@ -71,19 +71,19 @@ body {
   
   /* Track */
   ::-webkit-scrollbar-track {
-    background: whitesmoke !important;
+    background: #cfd8dc !important;
     border-radius: 10px !important;
     display: block !important;
   }
   
   /* Handle */
   ::-webkit-scrollbar-thumb {
-    background: white;
+    background: #546e7a;
   }
   
   /* Handle on hover */
   ::-webkit-scrollbar-thumb:hover {
-    background: white !important;
+    background: #455a64 !important;
   }
   
   .rc-slider-track {

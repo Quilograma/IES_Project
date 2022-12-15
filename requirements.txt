@@ -3,10 +3,11 @@ sqlalchemy==1.4.41
 flask_sqlalchemy==3.0.2
 pymysql==1.0.2
 psycopg2-binary==2.9.4 
-pyyaml==5.3.1
+pyyaml==6.0
 mysqlclient==2.1.1
 mysql-connector-python
 confluent-kafka
 kafka-python
 Flask-HTTPAuth
 requests
+dash
