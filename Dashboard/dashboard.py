@@ -37,7 +37,7 @@ app.layout = html.Div([
 
     html.Div([
         html.Div([
-        html.P('Most recent 10 Visitors',className = 'fix_label'),
+        html.P('Most recent 10 Visitors',className = 'fix_label',style={'textAlign': 'center'}),
         dcc.Graph(id='live-update-graph',config = {'displayModeBar': 'hover'})], className="create_container full columns")]
         ,className="row flex-display"),
         dcc.Interval(
@@ -45,6 +45,7 @@ app.layout = html.Div([
             interval=REFRESH_RATE_SECONDs*1000, # in milliseconds
             n_intervals=0
         ),
+    html.H5('Data visualization',style={'textAlign': 'center'}),
     html.Div([
         html.Div([
         html.P('Select page id',className = 'fix_label'),
@@ -61,10 +62,24 @@ app.layout = html.Div([
         id='filterbydate',
         end_date=datetime.datetime.now().date(),
         start_date=datetime.datetime.now().date()
-    )],className = "create_container four columns"),
-        html.Div([
+    )],className = "create_container four columns"),    
+    html.Div([
         dcc.Graph(id='live-update-graph-timeseries')],className = "create_container nine columns")
-        ],className = "row flex-display")
+        ],className = "row flex-display"),
+    html.Div([
+        html.Div([
+            html.Button('Train a model',id='TrainButton',n_clicks=0,style={'textAlign': 'center','background-color': '#008CBA','margin-top':'10px'}),
+            html.Form(children=[
+            html.P('Select forecast period',className = 'fix_label'),
+            dcc.Input(id='input_forecastperiod'),
+            html.P('Select miscoverage rate alpha',className = 'fix_label'),
+            dcc.Input(id='input_miscoveragerate'),
+            html.Button('Submit',id='SubmitTrain',n_clicks=0,style={'textAlign': 'center','background-color': 'red','margin-top':'10px'}),    
+            html.Div(id='dummy1')
+    ],id='train_form',
+    method='GET',hidden=True)
+        ],className='create_container twelve columns',style={'textAlign':'center'})
+    ],className='row flex-display')
     ],id = "mainContainer", style = {"display": "flex", "flex-direction": "column"})
 
 @app.callback(Output('interval-component','interval'),Input('my-slider', 'value'))
@@ -75,7 +90,7 @@ def update_refresh_rate(input):
 def current_RR(input):
     return 'Current refresh rate: {}'.format(input)
 
-@app.callback([Output('live-update-graph', 'figure'),Output('live-update-text','children'),Output('filterbydate','end_date')],
+@app.callback([Output('live-update-graph', 'figure'),Output('live-update-text','children')],
               Input('interval-component', 'n_intervals'))
 def update_graph_live(n):
     url = 'http://localhost:5001/Visitors'
@@ -88,7 +103,7 @@ def update_graph_live(n):
                      ])
     time_now=datetime.datetime.now()
     formated_time=time_now.strftime("%m-%d-%Y %H:%M:%S")
-    return fig,[html.Span('Last refreshed at {}'.format(formated_time))],datetime.datetime.now().date()
+    return fig,[html.Span('Last refreshed at {}'.format(formated_time))]
 
 @app.callback(Output('live-update-graph-timeseries','figure'),[Input('choose-page_id-dropdown','value'),Input('choose-groupby-dropdown','value'),Input('interval-component', 'n_intervals'),Input('filterbydate', 'start_date'),
     Input('filterbydate', 'end_date')])
@@ -111,6 +126,20 @@ def update_graph_timeseries(dropdown_value,groupby_drop,n,start_date,end_date):
     formated_time=time_now.strftime("%m-%d-%Y %H:%M:%S.%f")
     fig.update_layout(xaxis_range=[df_counts['accessed_at'].min(),formated_time])
     return fig
+
+@app.callback(Output('train_form','hidden'),[Input('TrainButton','n_clicks')])
+def toogle_form(n_clicks):
+    if n_clicks%2!=0:
+        return False
+    else:
+        return True
+
+@app.callback(Output('dummy1','children'),Input('SubmitTrain','n_clicks'))
+def train_forecast(n_clicks):
+    url = 'http://localhost:5001/train/1'
+    r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
+    return r.text
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)
