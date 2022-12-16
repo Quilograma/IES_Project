@@ -11,3 +11,6 @@ kafka-python
 Flask-HTTPAuth
 requests
 dash
+pandas
+numpy
+scikit-learn==1.0.1
