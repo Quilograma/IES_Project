@@ -45,6 +45,7 @@ app.layout = html.Div([
             interval=REFRESH_RATE_SECONDs*1000, # in milliseconds
             n_intervals=0
         ),
+    html.H5('Data visualization',style={'textAlign': 'center'}),
     html.Div([
         html.Div([
         html.P('Select page id',className = 'fix_label'),
@@ -61,10 +62,22 @@ app.layout = html.Div([
         id='filterbydate',
         end_date=datetime.datetime.now().date(),
         start_date=datetime.datetime.now().date()
-    )],className = "create_container four columns"),
-        html.Div([
+    )],className = "create_container four columns"),    
+    html.Div([
         dcc.Graph(id='live-update-graph-timeseries')],className = "create_container nine columns")
-        ],className = "row flex-display")
+        ],className = "row flex-display"),
+    html.Div([
+        html.Div([
+            html.Button('Train a model',id='TrainButton',style={'textAlign': 'center','background-color': '#008CBA','margin-top':'10px'}),
+            html.Form(children=[
+            html.P('Select forecast period',className = 'fix_label'),
+            dcc.Input(id='input_forecastperiod'),
+            html.P('Select miscoverage rate alpha',className = 'fix_label'),
+            dcc.Input(id='input_miscoveragerate')    
+    ], hidden=False,
+    method='GET')
+        ],className='create_container twelve columns',style={'textAlign':'center'})
+    ],className='row flex-display')
     ],id = "mainContainer", style = {"display": "flex", "flex-direction": "column"})
 
 @app.callback(Output('interval-component','interval'),Input('my-slider', 'value'))
