@@ -128,18 +128,22 @@ def update_graph_timeseries(dropdown_value,groupby_drop,n,start_date,end_date):
     fig.update_layout(xaxis_range=[df_counts['accessed_at'].min(),formated_time])
     return fig
 
-@app.callback(Output('train_form','hidden'),[Input('TrainButton','n_clicks')])
+@app.callback(Output('train_div','style'),[Input('TrainButton','n_clicks')])
 def toogle_form(n_clicks):
     if n_clicks%2!=0:
-        return False
+        return {'display':'block'}
     else:
-        return True
+        return {'display':'none'}
 
-@app.callback(Output('dummy1','children'),Input('SubmitTrain','n_clicks'))
+@app.callback(Output('dummy1','children'),Input('TrainSubmit','n_clicks'))
 def train_forecast(n_clicks):
-    url = 'http://localhost:5001/train/1'
-    r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
-    return r.text
+
+    if n_clicks>0:
+        url = 'http://localhost:5001/train/1'
+        r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
+        return r.text
+    else:
+        return ''
 
 
 if __name__ == '__main__':
