@@ -80,6 +80,10 @@ def train(page_id):
     mlp=MLPRegressor(max_iter=10)
     mlp.fit(X,y)
     output=X[10].reshape(1,-1)
+<<<<<<< HEAD
+=======
+    
+>>>>>>> 34036299d56d6f4201c0bab191ab2dd8e1dce90b
     return json.dumps(list(mlp.predict(output)))
 
 
