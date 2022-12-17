@@ -4,7 +4,7 @@ import json
 import dash
 from dash import dcc, html
 import plotly.express as px
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output,State
 import plotly.graph_objects as go
 import pandas as pd
 import datetime
@@ -71,6 +71,8 @@ app.layout = html.Div([
         html.Div([
             html.Button('Train a model',id='TrainButton',n_clicks=0,style={'textAlign': 'center','background-color': '#008CBA','margin-top':'10px'}),
             html.Div(children=[
+            html.P('Select number of lags',className='fix_label'),
+            dcc.Input(id='input_lags'),
             html.P('Select forecast period',className = 'fix_label'),
             dcc.Input(id='input_forecastperiod'),
             html.P('Select miscoverage rate alpha',className = 'fix_label'),
@@ -93,6 +95,7 @@ def current_RR(input):
 
 @app.callback([Output('live-update-graph', 'figure'),Output('live-update-text','children')],
               Input('interval-component', 'n_intervals'))
+
 def update_graph_live(n):
     url = 'http://localhost:5001/Visitors'
     r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
@@ -135,16 +138,25 @@ def toogle_form(n_clicks):
     else:
         return {'display':'none'}
 
-@app.callback(Output('dummy1','children'),Input('TrainSubmit','n_clicks'))
-def train_forecast(n_clicks):
+@app.callback(Output('dummy1','children'),Input('TrainSubmit','n_clicks'),
+    State('input_lags','value'),
+    State('input_forecastperiod','value'),
+    State('input_miscoveragerate','value'))
+
+def train_forecast(n_clicks,lags,forecastperiod,alpha):
+
+    d={}
+    d['page_id']=1
+    d['lags']=lags
+    d['forecastperiod']=forecastperiod
+    d['alpha']=alpha
 
     if n_clicks>0:
-        url = 'http://localhost:5001/train/1'
-        r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
+        url = 'http://localhost:5001/train'
+        r = requests.post(url, auth=HTTPDigestAuth('martim', 'martimpw'),json=d,timeout=10)
         return r.text
     else:
         return ''
-
 
 if __name__ == '__main__':
     app.run_server(debug=True)

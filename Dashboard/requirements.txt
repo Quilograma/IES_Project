@@ -2,3 +2,4 @@ dash
 requests
 pandas
 numpy
+dash-bootstrap-components

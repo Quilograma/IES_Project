@@ -7,7 +7,41 @@ import yaml
 import os
 import pandas as pd
 import numpy as np
-from sklearn.neural_network import MLPRegressor
+from keras import Sequential
+from keras.models import Model
+from keras.layers import Dense, Input,Dropout
+import keras.backend as K
+
+
+def tilted_loss(q,y,f):
+    # q: Quantile to be evaluated, e.g., 0.5 for median.
+    # y: True value.
+    # f: Fitted (predicted) value.
+    e = (y-f)
+    return K.mean(K.maximum(q*e, (q-1)*e), axis=-1)
+
+# Feedforward neural network QR architecture
+
+def QuantileRegressionModel(n_in,n_out,qs=[0.1, 0.5, 0.9]):
+    ipt_layer = Input((n_in,))
+    layer1 = Dense(100, activation='relu')(ipt_layer)
+    drop1=Dropout(0.1)(layer1)
+    layer2 = Dense(100, activation='relu')(drop1)
+    drop2=Dropout(0.1)(layer2)
+    
+    out1 = Dense(n_out, name='out1')(drop2)
+    out2 = Dense(n_out, name='out2')(drop2)
+    out3 = Dense(n_out, name='out3')(drop2)
+    
+    q1, q2, q3 = qs
+    model = Model(inputs=ipt_layer, outputs=[out1, out2, out3])
+    model.compile(loss={'out1': lambda y,f: tilted_loss(q1,y,f),
+                        'out2': lambda y,f: tilted_loss(q2,y,f),
+                        'out3': lambda y,f: tilted_loss(q3,y,f),}, 
+                  loss_weights={'out1': 1, 'out2': 1, 'out3': 1},
+                 optimizer='adam')
+    
+    return model
 
 def to_supervised(timeseries,n_lags,n_output=1):
     
@@ -66,26 +100,34 @@ def get_visitor_byid(id):
     visitor=Visitor.get_by_id(id)
     return json.dumps(visitor.to_dict())
 
-@app.route('/train/<int:page_id>',methods=['GET'])
+@app.route('/train',methods=['POST'])
 @auth.login_required
-def train(page_id):
-    print(request.form.values())
+def train():
+
+    content = json.loads(request.data)
+    page_id=int(content['page_id'])
+    lags=int(content['lags'])
+    forecastperiod=int(content['forecastperiod'])
+    alpha=float(content['alpha'])
+    
     list_visitors=Visitor.get_by_page(page_id)
     results = [obj.to_dict() for obj in list_visitors]
     data=pd.DataFrame.from_dict(results)
     data['accessed_at'] = pd.to_datetime(data['accessed_at'])
     df_counts=data.groupby([pd.Grouper(key='accessed_at', freq='H')]).count()
     df_counts.reset_index(inplace=True)
-    X,y=to_supervised(df_counts['page_id'].values,n_lags=10,n_output=1)
-    mlp=MLPRegressor(max_iter=10)
-    mlp.fit(X,y)
+    X,y=to_supervised(df_counts['page_id'].values,n_lags=lags,n_output=forecastperiod)
+    qr=QuantileRegressionModel(lags,forecastperiod,qs=[alpha/2, 0.5, 1-alpha/2])
+    qr.fit(X,y,epochs=100,verbose=0,batch_size=100)
     output=X[10].reshape(1,-1)
-<<<<<<< HEAD
-=======
-    
->>>>>>> 34036299d56d6f4201c0bab191ab2dd8e1dce90b
-    return json.dumps(list(mlp.predict(output)))
+    forecast=qr.predict(output)
+    lower_bound=list(forecast[0].flatten())
+    upper_bound=list(forecast[2].flatten())
+    r={'lower_bound':lower_bound,'upper_bound':upper_bound}
 
+
+
+    return json.dumps(content)
 
 if __name__=='__main__':
     app.run(host='myapp')
