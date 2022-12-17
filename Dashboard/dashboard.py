@@ -9,6 +9,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import datetime
 from datetime import date
+import dash_bootstrap_components as dbc
 
 REFRESH_RATE_SECONDs=1
 app = dash.Dash(__name__)
@@ -69,15 +70,15 @@ app.layout = html.Div([
     html.Div([
         html.Div([
             html.Button('Train a model',id='TrainButton',n_clicks=0,style={'textAlign': 'center','background-color': '#008CBA','margin-top':'10px'}),
-            html.Form(children=[
+            html.Div(children=[
             html.P('Select forecast period',className = 'fix_label'),
             dcc.Input(id='input_forecastperiod'),
             html.P('Select miscoverage rate alpha',className = 'fix_label'),
             dcc.Input(id='input_miscoveragerate'),
-            html.Button('Submit',id='SubmitTrain',n_clicks=0,style={'textAlign': 'center','background-color': 'red','margin-top':'10px'}),    
+           dbc.Button( "Submit", id="TrainSubmit", className="me-2", n_clicks=0,
+        color='danger'),    
             html.Div(id='dummy1')
-    ],id='train_form',
-    method='GET',hidden=True)
+    ],id='train_div',style={'display':'none'})
         ],className='create_container twelve columns',style={'textAlign':'center'})
     ],className='row flex-display')
     ],id = "mainContainer", style = {"display": "flex", "flex-direction": "column"})
@@ -127,18 +128,21 @@ def update_graph_timeseries(dropdown_value,groupby_drop,n,start_date,end_date):
     fig.update_layout(xaxis_range=[df_counts['accessed_at'].min(),formated_time])
     return fig
 
-@app.callback(Output('train_form','hidden'),[Input('TrainButton','n_clicks')])
+@app.callback(Output('train_div','style'),[Input('TrainButton','n_clicks')])
 def toogle_form(n_clicks):
     if n_clicks%2!=0:
-        return False
+        return {'display':'block'}
     else:
-        return True
+        return {'display':'none'}
 
-@app.callback(Output('dummy1','children'),Input('SubmitTrain','n_clicks'))
+@app.callback(Output('dummy1','children'),Input('TrainSubmit','n_clicks'))
 def train_forecast(n_clicks):
-    url = 'http://localhost:5001/train/1'
-    r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
-    return r.text
+    if n_clicks>1:
+        url = 'http://localhost:5001/train/1'
+        r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
+        return r.text
+    else:
+        return ''
 
 
 if __name__ == '__main__':
