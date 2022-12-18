@@ -121,13 +121,15 @@ def train():
     qr.fit(X,y,epochs=100,verbose=0,batch_size=100)
     output=X[10].reshape(1,-1)
     forecast=qr.predict(output)
-    lower_bound=list(forecast[0].flatten())
-    upper_bound=list(forecast[2].flatten())
+    lower_bound=forecast[0].flatten()
+    upper_bound=forecast[2].flatten()
+    lower_bound = list(lower_bound.astype('float64'))
+    upper_bound= list(upper_bound.astype('float64'))
+
     r={'lower_bound':lower_bound,'upper_bound':upper_bound}
 
 
-
-    return json.dumps(content)
+    return json.dumps(r)
 
 if __name__=='__main__':
     app.run(host='myapp')
