@@ -63,7 +63,7 @@ app.layout = html.Div([
         id='filterbydate',
         end_date=datetime.datetime.now().date(),
         start_date=datetime.datetime.now().date()
-    )],className = "create_container four columns"),    
+    )],className = "create_container three columns"),    
     html.Div([
         dcc.Graph(id='live-update-graph-timeseries')],className = "create_container nine columns")
         ],className = "row flex-display"),
@@ -71,19 +71,23 @@ app.layout = html.Div([
         html.Div([
             html.Button('Train a model',id='TrainButton',n_clicks=0,style={'textAlign': 'center','background-color': '#008CBA','margin-top':'10px'}),
             html.Div(children=[
+            html.P('Select Page Id',className='fix_label'),
+            dcc.Dropdown([i+1 for i in range(10)], '1', id='input_pageid'),
             html.P('Select number of lags',className='fix_label'),
             dcc.Input(id='input_lags'),
             html.P('Select forecast period',className = 'fix_label'),
             dcc.Input(id='input_forecastperiod'),
             html.P('Select miscoverage rate alpha',className = 'fix_label'),
-            dcc.Input(id='input_miscoveragerate'),
-           dbc.Button( "Submit", id="TrainSubmit", className="me-2", n_clicks=0,
-        color='danger'),    
-            html.Div(id='dummy1')
-    ],id='train_div',style={'display':'none'})
-        ],className='create_container twelve columns',style={'textAlign':'center'})
-    ],className='row flex-display')
-    ],id = "mainContainer", style = {"display": "flex", "flex-direction": "column"})
+            dcc.Input(id='input_miscoveragerate'),   
+    ],id='train_div',style={'display':'none'}),
+            html.Div([
+            html.Button("Submit", id="TrainSubmit", n_clicks=0,style={'textAlign': 'center','display':'none','background-color':'green','margin-top':'10px'}),
+            html.P(id='dummy1')
+            ],style={'textAlign':'center'})
+        ],className='create_container three columns',style={'textAlign':'center'}),
+        html.Div([
+             dcc.Graph(id='live-update-graph-prection')],className = "create_container nine columns")
+    ],className='row flex-display')],id = "mainContainer", style = {"display": "flex", "flex-direction": "column"})
 
 @app.callback(Output('interval-component','interval'),Input('my-slider', 'value'))
 def update_refresh_rate(input):
@@ -131,32 +135,39 @@ def update_graph_timeseries(dropdown_value,groupby_drop,n,start_date,end_date):
     fig.update_layout(xaxis_range=[df_counts['accessed_at'].min(),formated_time])
     return fig
 
-@app.callback(Output('train_div','style'),[Input('TrainButton','n_clicks')])
+@app.callback(Output('train_div','style'),Output('TrainSubmit','style'),Output('TrainButton','children'),Output('TrainButton','style'),[Input('TrainButton','n_clicks')])
 def toogle_form(n_clicks):
     if n_clicks%2!=0:
-        return {'display':'block'}
+        return {'display':'block'},{'display':'inline','textAlign': 'center','background-color':'orange','textAlign': 'center','margin-top':'10px'},'Hide',{'textAlign': 'center','background-color': 'red','margin-top':'10px'}
     else:
-        return {'display':'none'}
+        return {'display':'none'},{'display':'none','textAlign': 'center','background-color':'green','textAlign': 'center','margin-top':'10px'},'Train a model',{'textAlign': 'center','background-color': '#008CBA','margin-top':'10px'}
 
-@app.callback(Output('dummy1','children'),Input('TrainSubmit','n_clicks'),
+@app.callback(Output('live-update-graph-prection','figure'),Output('dummy1','children'),Input('TrainSubmit','n_clicks'),
     State('input_lags','value'),
     State('input_forecastperiod','value'),
-    State('input_miscoveragerate','value'))
+    State('input_miscoveragerate','value'),
+    State('input_pageid','value'))
 
-def train_forecast(n_clicks,lags,forecastperiod,alpha):
-
+def train_forecast(n_clicks,lags,forecastperiod,alpha,pageid):
     d={}
-    d['page_id']=1
     d['lags']=lags
     d['forecastperiod']=forecastperiod
     d['alpha']=alpha
+    d['page_id']=pageid
+    fig = go.Figure()
 
     if n_clicks>0:
         url = 'http://localhost:5001/train'
         r = requests.post(url, auth=HTTPDigestAuth('martim', 'martimpw'),json=d,timeout=10)
-        return r.text
+        d_forecast=json.loads(r.text)
+        lower_bound=d_forecast['lower_bound']
+        upper_bound=d_forecast['upper_bound']
+        x_axis=[i for i in range(len(lower_bound))]
+        fig.add_trace(go.Scatter(x=x_axis, y=lower_bound, fill='tozeroy')) # fill down to xaxis
+        fig.add_trace(go.Scatter(x=x_axis, y=upper_bound, fill='tonexty'))
+        return fig, r.text
     else:
-        return ''
+        return fig, ''
 
 if __name__ == '__main__':
     app.run_server(debug=True)
