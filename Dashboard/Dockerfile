@@ -12,4 +12,4 @@ COPY . /usr/src/app
 
 RUN sed -i -e 's/\r$//' run.sh
 
-CMD ["bash", "-c", "./run.sh"]
+ CMD [ "gunicorn", "--workers=5", "--threads=1", "-b 0.0.0.0:10001", "dashboard:server"]

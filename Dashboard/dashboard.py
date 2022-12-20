@@ -10,11 +10,14 @@ import pandas as pd
 import datetime
 from datetime import date
 import dash_bootstrap_components as dbc
+from flask import Flask
 
 REFRESH_RATE_SECONDs=1
-app = dash.Dash(__name__)
-app.layout = html.Div([
+server = Flask(__name__)
+app = dash.Dash(server=server)
+app.title = 'Dashboard'
 
+app.layout = html.Div([
     html.Div([
         html.Div([
         html.H1('MyDashboard',style={'textAlign': 'center'}),
@@ -101,7 +104,7 @@ def current_RR(input):
               Input('interval-component', 'n_intervals'))
 
 def update_graph_live(n):
-    url = 'http://localhost:5001/Visitors'
+    url = 'http://myapp:5000/Visitors'
     r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
     df_data= pd.DataFrame.from_dict(json.loads(r.text))
     df_data_sorted = df_data.sort_values(by=['id'], ascending=False)
@@ -119,7 +122,7 @@ def update_graph_timeseries(dropdown_value,groupby_drop,n,start_date,end_date):
     end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d')+datetime.timedelta(days=1)
     start_date = datetime.datetime.strptime(start_date, '%Y-%m-%d')
 
-    url = 'http://localhost:5001/Visitors?page_id='+str(dropdown_value)
+    url = 'http://myapp:5000/Visitors?page_id='+str(dropdown_value)
     r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
     df_data= pd.DataFrame.from_dict(json.loads(r.text))
 
@@ -157,7 +160,7 @@ def train_forecast(n_clicks,lags,forecastperiod,alpha,pageid):
     fig = go.Figure()
 
     if n_clicks>0:
-        url = 'http://localhost:5001/train'
+        url = 'http://myapp:5000/train'
         r = requests.post(url, auth=HTTPDigestAuth('martim', 'martimpw'),json=d,timeout=10)
         d_forecast=json.loads(r.text)
         lower_bound=d_forecast['lower_bound']
@@ -170,4 +173,4 @@ def train_forecast(n_clicks,lags,forecastperiod,alpha,pageid):
         return fig, ''
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server()
