@@ -163,8 +163,8 @@ def train_forecast(n_clicks,lags,forecastperiod,alpha,pageid):
         lower_bound=d_forecast['lower_bound']
         upper_bound=d_forecast['upper_bound']
         x_axis=[i for i in range(len(lower_bound))]
-        fig.add_trace(go.Scatter(x=x_axis, y=lower_bound, fill='tozeroy')) # fill down to xaxis
-        fig.add_trace(go.Scatter(x=x_axis, y=upper_bound, fill='tonexty'))
+        fig.add_trace(go.Scatter(x=x_axis, y=lower_bound,name='lower bound', mode='lines+markers', line_color='blue', fill='tozerox',fillcolor='lightgray')) # fill down to xaxis
+        fig.add_trace(go.Scatter(x=x_axis, y=upper_bound,name='upper bound', mode='lines+markers',line_color='blue' ,fill='tonexty',fillcolor='lightgray'))
         return fig, r.text
     else:
         return fig, ''
