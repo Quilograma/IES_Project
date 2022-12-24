@@ -26,4 +26,3 @@ if __name__ == '__main__':
             data=json.loads(msg.value().decode('utf-8'))
             visitor=Visitor(accessed_at=datetime.datetime.utcfromtimestamp(data['accessed_at']),user_id=data['user_id'], page_id=data['page_id'])
             visitor.save()
-            #app.run(host="0.0.0.0", debug=False,port=85)

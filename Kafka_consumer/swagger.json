@@ -1,0 +1,220 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+      "description": "Martim",
+      "version": "1.0.0",
+      "title": "FlaskAPI Visitors",
+      "license": {
+        "name": "MIT",
+        "url": "https://opensource.org/licenses/MIT"
+      }
+    },
+    "servers": [
+      {
+        "url": "/"
+      }
+    ],
+    "tags": [
+      {
+        "name": "Time Series Visitors API",
+        "description": "API documentation"
+      }
+    ],
+
+
+    "paths": {
+      "/Visitors": {
+        "get": {
+          "tags": [
+            "Visitors Request"
+          ],
+          "summary": "Returns all Visitors",
+          "responses": {
+            "200": {
+              "description": "OK",
+              "schema": {
+                "$ref": "#/components/schemas/Visitors"
+              }
+            }
+          }
+        }
+      },
+      "/Visitors?page_id={id}":{
+        "parameters": [
+            {
+              "name": "id",
+              "in": "path",
+              "required": true,
+              "description": "ID of the page_id that we want to match",
+              "type": "id"
+            }
+          ],
+          "get": {
+            "tags":["Filter Visitors by page_id"],
+            "summary": "Filter Visitors by page_id",
+            "parameters": [
+                {
+                  "in": "path",
+                  "name": "id",
+                  "required": true,
+                  "description": "Visitor Request id",
+                  "schema": {
+                    "$ref": "#/components/schemas/id"
+                  }
+                }
+            ],
+            "responses": {
+                "200": {
+                  "description": "OK",
+                  "schema": {
+                    "$ref": "#/components/schemas/Visitors"
+                  }
+                },
+                "400": {
+                  "description": "Failed. Misunderstood Request."
+                },
+                "404": {
+                  "description": "Failed. Visitor request not found."
+                }
+              }
+          }  
+      },
+      "/Visitors/{id}": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID of the Visitor that we want to match",
+            "type": "id"
+          }
+        ],
+        "get": {
+          "tags": [
+            "Visitors Request"
+          ],
+          "summary": "Get Visitor request with given ID",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "id",
+              "required": true,
+              "description": "Visitor Request id",
+              "schema": {
+                "$ref": "#/components/schemas/id"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "OK",
+              "schema": {
+                "$ref": "#/components/schemas/Visitors"
+              }
+            },
+            "400": {
+              "description": "Failed. Misunderstood Request."
+            },
+            "404": {
+              "description": "Failed. Visitor request not found."
+            }
+          }
+        }
+      },
+      "/train":{
+        "parameters":[
+            {
+                "name":"page_id",
+                "type":"int",
+                "required":true
+            },
+            {
+                "name":"lags",
+                "type":"int",
+                "required":true
+            },            
+            {
+                "name":"forecastperiod",
+                "type":"int",
+                "required":true
+            },
+            {
+                "name":"alpha",
+                "type":"float",
+                "required":true
+            }
+        ],
+        "post": {
+            "summary": "Get Visitor request with given ID",
+            "parameters":[
+                {
+                    "name":"page_id",
+                    "type":"int",
+                    "required":true
+                },
+                {
+                    "name":"lags",
+                    "type":"int",
+                    "required":true
+                },            
+                {
+                    "name":"forecastperiod",
+                    "type":"int",
+                    "required":true
+                },
+                {
+                    "name":"alpha",
+                    "type":"float",
+                    "required":true
+                }
+            ]
+        }
+      }
+    },
+
+    "components": {
+      "schemas": {
+        "id": {
+          "properties": {
+            "id": {
+              "type": "int"
+            }
+          }
+        },
+        "Visitor": {
+            "type":"object",
+            "properties": {
+                "id": {
+                    "type":"int"
+                },
+                "accessed_at": {
+                    "type": "datetime"
+                },
+                "user_id": {
+                    "type":"int"
+                },
+                "page_id":{
+                    "type": "int"
+                }
+            }
+        },
+        "TrainPostBody": {
+          "type": "object",
+          "properties": {
+            "page_id": {
+              "type": "int"
+            },
+            "lags":{
+                "type": "int"
+            },
+            "forecastperiod": {
+                "type":"int"
+            },
+            "alpha": {
+                "type": "float"
+            }
+          }
+        }
+      }
+    }
+  }

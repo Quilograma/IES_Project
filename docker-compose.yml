@@ -88,6 +88,8 @@ services:
     build:
       context: ./Dashboard
       dockerfile: Dockerfile
+    environment:
+      - name=value
     depends_on:
       - db
       - app

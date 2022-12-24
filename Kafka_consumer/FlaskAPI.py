@@ -1,7 +1,7 @@
 from flask_httpauth import HTTPDigestAuth
 from Model.models import Visitor
 import json
-from flask import request
+from flask import request, Blueprint,send_from_directory,send_file
 from main import db,app
 import yaml
 import os
@@ -11,6 +11,22 @@ from keras import Sequential
 from keras.models import Model
 from keras.layers import Dense, Input,Dropout
 import keras.backend as K
+from flask_swagger_ui import get_swaggerui_blueprint
+
+### swagger specific ###
+SWAGGER_URL = '/docs'
+API_URL = '/docs/swagger.json'
+SWAGGERUI_BLUEPRINT = get_swaggerui_blueprint(
+    SWAGGER_URL,
+    API_URL,
+    config={
+        'app_name': "FlaskAPI"
+    }
+)
+app.register_blueprint(SWAGGERUI_BLUEPRINT, url_prefix=SWAGGER_URL)
+### end swagger specific ###
+
+
 
 
 def tilted_loss(q,y,f):
@@ -130,6 +146,12 @@ def train():
 
 
     return json.dumps(r)
+
+@app.route("/docs/swagger.json")
+def specs():
+    return  send_file('swagger.json')
+
+
 
 if __name__=='__main__':
     app.run(host='myapp')
