@@ -1,3 +1,4 @@
+import base64
 from dash import dcc, html
 import dash
 import dash_bootstrap_components as dbc
@@ -15,20 +16,20 @@ navbar = dbc.NavbarSimple(
     dark=True,
 )
 
-carousel = dbc.Carousel(
-    items=[
-        {"key": "1", "src": "https://upload.wikimedia.org/wikipedia/commons/8/8a/Plotly-logo.png"},
-        {"key": "2", "src": "/static/images/image2.jpg"},
-        {"key": "3", "src": "/static/images/image3.png"},
-    ],
-    controls=False,
-    indicators=False,
-    interval=2000,
-    ride="carousel",
-)
 
-app.layout = html.Div([ navbar,
-    carousel,
+
+head=html.Div([
+html.H1('Welcome to the Website traffic monitoring tool!'),
+dbc.Row([
+    dbc.Col(html.Img(src='./assets/image3.png',className='img-fluid'),width=3),
+    dbc.Col(html.P('col2'),width=3),
+    dbc.Col(html.P('col3'),width=3)
+])],style={'textAlign':'Center'})
+
+
+
+app.layout = html.Div([navbar,
+head,
   dcc.Location(id='url', refresh=False),
   html.Div(id='page-content')
                      ])
