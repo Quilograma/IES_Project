@@ -8,7 +8,6 @@ from dash.dependencies import Input, Output,State
 import plotly.graph_objects as go
 import pandas as pd
 import datetime
-from datetime import date
 import dash_bootstrap_components as dbc
 from flask import Flask
 

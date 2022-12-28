@@ -8,22 +8,104 @@ from dash.dependencies import Input, Output,State
 import plotly.graph_objects as go
 import pandas as pd
 import datetime
-from datetime import date
 import dash_bootstrap_components as dbc
 from flask import Flask
+import sys
+import os
+SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(SCRIPT_DIR)
+from Kafka_consumer.Model.models import User
+
+logged=False
 
 REFRESH_RATE_SECONDs=1
 server = Flask(__name__)
-app = dash.Dash(server=server)
+app = dash.Dash(server=server,suppress_callback_exceptions=True,external_stylesheets=[dbc.themes.ZEPHYR])
 app.title = 'Dashboard'
 
 app.layout = html.Div([
-    html.Div([
-        html.Div([
-        html.H1('MyDashboard',style={'textAlign': 'center'}),
-        html.H3('Pick a desired refresh rate in seconds',style={'textAlign': 'center'}),
-       ],id = "header", className = "six column", style = {"margin-bottom": "25px"}),
-       ],className = "row flex-display"),
+  dcc.Location(id='url', refresh=False),
+  html.Div(id='page-content')])
+
+centered= {
+      'position': 'fixed',
+      'top': '50%',
+      'left': '50%',
+      'transform': 'translate(-50%, -50%)',
+      'textAlign':'center'
+    }
+
+############# index_page ########################
+index_page=html.Div([dbc.NavbarSimple(
+    children=[
+        dbc.NavItem(dbc.NavLink("Sign in", href="/login_page")),
+        dbc.NavItem(dbc.NavLink("Sign up", href="/sign_up"))
+    ],
+    brand='Dashboard',
+    brand_href="/dashboard",
+    color="primary",
+    dark=True,
+),
+dbc.Container([
+    dbc.Alert(
+            [
+                html.H1('Welcome to the website traffic monitoring tool!')
+            ],
+            color="info",
+            className="d-flex align-items-center",
+        style={'margin-top':'50px'}),
+html.Div(style={'height':'100px'}),
+dbc.Row([
+    dbc.Col([html.Img(src='/assets/chart-line-solid.svg',className="img-fluid")],width=4),
+    dbc.Col([html.Img(src='/assets/chart-pie-solid.svg',className="img-fluid")],width=4),
+    dbc.Col([html.Img(src='/assets/arrows-spin-solid.svg',className='img-fluid')],width=4)
+]),
+dbc.Row([
+    dbc.Col(html.P('Forecast the incoming traffic on each website with Machine Learning models.'),width=4),
+    dbc.Col(html.P('Data Analytics in real time.'),width=4),
+    dbc.Col(html.P('Monitor model metrics in real time and trigger a retraining process whenever you feel the model is not capturing distribution shifts.'),width=4)
+])],fluid=True,style={'textAlign':'Center'})])
+
+############ Sign up page #################
+signup_page=html.Div([
+    html.P('Username:'),
+    dbc.InputGroup([
+        dbc.Input(type='text',id='sign_up_username',placeholder='Choose your username',className="mb-3")
+    ]),
+    html.P('Password:'),
+    dbc.InputGroup([
+        dbc.Input(type='password',id='sign_up_password',placeholder='Choose your password (at least 6 characters)',className="mb-3")
+    ]),
+    dbc.Button('Submit',id='sign_up_btn_submit',className="mb-3",n_clicks=0),
+    html.Div(id='sign_up_dummy')
+],style=centered)
+
+############# login page ###################
+login_page=html.Div([
+    html.P('Username:'),
+    dbc.InputGroup([
+        dbc.Input(type='text',id='sign_in_username',placeholder='Choose your username',className="mb-3")
+    ]),
+    html.P('Password:'),
+    dbc.InputGroup([
+        dbc.Input(type='password',id='sign_in_password',valid=False,placeholder='Choose your password (at least 6 characters)',className="mb-3")
+    ]),
+    dbc.Button('Submit',id='sign_in_btn_submit',className="mb-3",n_clicks=0),
+    html.Div(id='sign_in_dummy')
+],style=centered)
+
+########## dashboard ################
+dashboard=dbc.Container([
+    html.H1('MyDashboard',style={'textAlign': 'center'}),
+    dcc.Tabs(id="tabs", value='tabs_value', children=[
+        dcc.Tab(label='Dashboard', value='tab-1'),
+        dcc.Tab(label='Metrics', value='tab-2'),
+        dcc.Tab(label='Pending tasks', value='tab-3'),
+        dcc.Tab(label='User info', value='tab-4'),
+    ]),
+    dbc.Container([
+        html.H3('Pick a desired refresh rate in seconds',style={'textAlign': 'center'})
+       ],fluid = True),
         dcc.Slider(1, 60, value=5,id='my-slider',
         marks={
         1: {'label': '1'},
@@ -32,47 +114,48 @@ app.layout = html.Div([
         40: {'label': '40'},
         60: {'label':'60'}
     }),
-
-    html.Div([
-        html.Div([
+    dbc.Container([
+        dbc.Row([
+        dbc.Col([
         html.H3(id='live-update-text-currentRR',style={'font-weight': 'bold','textAlign':'center'}),
-        html.H3(id='live-update-text',style={'textAlign': 'center'})],className = "six column", style = {"margin-bottom": "25px"}),
-        ],className = "row flex-display"),
+        html.H3(id='live-update-text',style={'textAlign': 'center'})],width=6)],className = "six column", style = {"margin-bottom": "25px"}),
+        ],fluid= True),
 
-    html.Div([
-        html.Div([
-        html.P('Most recent 10 Visitors',className = 'fix_label',style={'textAlign': 'center'}),
-        dcc.Graph(id='live-update-graph',config = {'displayModeBar': 'hover'})], className="create_container full columns")]
-        ,className="row flex-display"),
+    dbc.Container([
+        dbc.Container([
+        html.P('Most recent 10 Visitors',style={'textAlign': 'center'}),
+        dcc.Graph(id='live-update-graph',config = {'displayModeBar': 'hover'})])]),
         dcc.Interval(
             id='interval-component',
             interval=REFRESH_RATE_SECONDs*1000, # in milliseconds
             n_intervals=0
         ),
     html.H5('Data visualization',style={'textAlign': 'center'}),
-    html.Div([
-        html.Div([
-        html.P('Select page id',className = 'fix_label'),
+    dbc.Container([
+        dbc.Row([
+        dbc.Col([
+        html.P('Select page id',),
         dcc.Dropdown([i+1 for i in range(10)], '1', id='choose-page_id-dropdown'),
-        html.P('Select group by',className = 'fix_label'),
+        html.P('Select group by'),
         dcc.Dropdown(options=[
         {'label':'Hour','value':'H'},
        {'label': 'Day', 'value': 'D'},
        {'label': 'Week', 'value': 'W'},
        {'label': 'Month', 'value': 'M'},
    ], value='H', id='choose-groupby-dropdown'),
-        html.P('Filter by datetime ',className = 'fix_label'),
+        html.P('Filter by datetime '),
         dcc.DatePickerRange(
         id='filterbydate',
         end_date=datetime.datetime.now().date(),
         start_date=datetime.datetime.now().date()
-    )],className = "create_container three columns"),    
-    html.Div([
-        dcc.Graph(id='live-update-graph-timeseries')],className = "create_container nine columns")
-        ],className = "row flex-display"),
-    html.Div([
-        html.Div([
-            html.Button('Train a model',id='TrainButton',n_clicks=0,style={'textAlign': 'center','background-color': '#008CBA','margin-top':'10px'}),
+    )],width=3),    
+    dbc.Col([
+        dcc.Graph(id='live-update-graph-timeseries')],width=9)
+        ])],fluid=True),
+    dbc.Container([
+        dbc.Row([
+        dbc.Col([
+            dbc.Button('Train a model',id='TrainButton',n_clicks=0,style={'textAlign': 'center','background-color': '#008CBA','margin-top':'10px'}),
             html.Div(children=[
             html.P('Select Page Id',className='fix_label'),
             dcc.Dropdown([i+1 for i in range(10)], '1', id='input_pageid'),
@@ -83,14 +166,27 @@ app.layout = html.Div([
             html.P('Select miscoverage rate alpha',className = 'fix_label'),
             dcc.Input(id='input_miscoveragerate'),   
     ],id='train_div',style={'display':'none'}),
-            html.Div([
-            html.Button("Submit", id="TrainSubmit", n_clicks=0,style={'textAlign': 'center','display':'none','background-color':'green','margin-top':'10px'}),
-            html.P(id='dummy1')
+            dbc.Container([
+            dbc.Button("Submit", id="TrainSubmit", n_clicks=0,style={'textAlign': 'center','display':'none','background-color':'green','margin-top':'10px'})
             ],style={'textAlign':'center'})
-        ],className='create_container three columns',style={'textAlign':'center'}),
-        html.Div([
-             dcc.Graph(id='live-update-graph-prection')],className = "create_container nine columns")
-    ],className='row flex-display')],id = "mainContainer", style = {"display": "flex", "flex-direction": "column"})
+        ],width=3,style={'textAlign':'center'}),
+        dbc.Col([
+             dcc.Graph(id='live-update-graph-prection')],width = 9)
+    ])])],fluid=True)
+
+########### callbacks #################
+
+@app.callback(Output('page-content', 'children'),
+[Input('url', 'pathname')])
+def display_page(pathname):
+    if pathname == '/login_page':
+        return login_page
+    elif pathname == '/dashboard' and logged:
+        return dashboard
+    elif pathname == 'signup_page':
+        return signup_page
+    else:
+        return index_page
 
 @app.callback(Output('interval-component','interval'),Input('my-slider', 'value'))
 def update_refresh_rate(input):
@@ -104,7 +200,7 @@ def current_RR(input):
               Input('interval-component', 'n_intervals'))
 
 def update_graph_live(n):
-    url = 'http://myapp:5000/Visitors'
+    url = 'http://myapp:5001/Visitors'
     r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
     df_data= pd.DataFrame.from_dict(json.loads(r.text))
     df_data_sorted = df_data.sort_values(by=['id'], ascending=False)
@@ -122,7 +218,7 @@ def update_graph_timeseries(dropdown_value,groupby_drop,n,start_date,end_date):
     end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d')+datetime.timedelta(days=1)
     start_date = datetime.datetime.strptime(start_date, '%Y-%m-%d')
 
-    url = 'http://myapp:5000/Visitors?page_id='+str(dropdown_value)
+    url = 'http://myapp:5001/Visitors?page_id='+str(dropdown_value)
     r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
     df_data= pd.DataFrame.from_dict(json.loads(r.text))
 
@@ -145,7 +241,7 @@ def toogle_form(n_clicks):
     else:
         return {'display':'none'},{'display':'none','textAlign': 'center','background-color':'green','textAlign': 'center','margin-top':'10px'},'Train a model',{'textAlign': 'center','background-color': '#008CBA','margin-top':'10px'}
 
-@app.callback(Output('live-update-graph-prection','figure'),Output('dummy1','children'),Input('TrainSubmit','n_clicks'),
+@app.callback(Output('live-update-graph-prection','figure'),Input('TrainSubmit','n_clicks'),
     State('input_lags','value'),
     State('input_forecastperiod','value'),
     State('input_miscoveragerate','value'),
@@ -168,9 +264,44 @@ def train_forecast(n_clicks,lags,forecastperiod,alpha,pageid):
         x_axis=[i for i in range(len(lower_bound))]
         fig.add_trace(go.Scatter(x=x_axis, y=lower_bound,name='lower bound', mode='lines+markers', line_color='blue', fill='tozerox',fillcolor='lightgray')) # fill down to xaxis
         fig.add_trace(go.Scatter(x=x_axis, y=upper_bound,name='upper bound', mode='lines+markers',line_color='blue' ,fill='tonexty',fillcolor='lightgray'))
-        return fig, r.text
+        return fig
     else:
-        return fig, ''
+        return fig
+
+@app.callback(Output('sign_up_dummy','children'),Output('url', 'pathname'),Input('sign_up_btn_submit','n_clicks'),State('sign_up_username','value'),State('sign_up_password','value'))
+
+def sign_up(n_clicks,username,password):
+    check=False
+    pathname='#'
+
+    if n_clicks>0:
+
+        user=User.get_by_username(username)
+
+        if user is None and len(password)>6:
+            new_user=User(username,password)
+            new_user.save()
+            check=True
+            pathname='/'
+
+    return str(check),pathname
+
+
+@app.callback(Output('sign_in_dummy','children'),Output('url', 'pathname'),Input('sign_in_btn_submit','n_clicks'),State('sign_in_username','value'),State('sign_in_password','value'))
+
+def sign_in(n_clicks,username,password):
+    check=False
+    pathname='#'
+
+    if n_clicks>0:
+        user=User.get_by_username(username)
+
+        if user is not None and user.password==password:
+            check=True
+            pathname='/dashboard'
+            logged=True
+
+    return str(check),pathname
 
 if __name__ == '__main__':
     app.run_server()

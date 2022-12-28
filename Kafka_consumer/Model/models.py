@@ -5,6 +5,24 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 from Utils.db import db
 
+class User(db.Model):
+    __tablename__ = 'Users'
+    username = db.Column(db.String(30),primary_key=True,nullable=False)
+    password = db.Column(db.Text,nullable=False)
+
+    def save(self):
+        db.session.add(self)
+        db.session.commit()
+    
+    def update(self,_username,new_password):
+        user=self.get_by_username(_username)
+        user.password=new_password
+        db.session.commit()
+
+    @classmethod
+    def get_by_username(cls,_username):
+        return cls.query.filter_by(username=_username).first()
+
 class Visitor(db.Model):
     __tablename__ = 'Visitors'
     id = db.Column(db.Integer, primary_key=True)
