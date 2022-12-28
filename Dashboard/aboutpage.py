@@ -24,7 +24,7 @@ navbar = dbc.NavbarSimple(
         dbc.NavItem(dbc.NavLink("Sign up", href="#"))
     ],
     brand='Dashboard',
-    brand_href="#",
+    brand_href="/dashboard",
     color="primary",
     dark=True,
 )
@@ -60,6 +60,7 @@ app.layout = html.Div([
   dcc.Location(id='url', refresh=False),
   html.Div(id='page-content')
                      ])
+                    
 login_page=html.Div([
     html.P('Username:'),
     dbc.InputGroup([

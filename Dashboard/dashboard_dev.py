@@ -17,6 +17,64 @@ server = Flask(__name__)
 app = dash.Dash(server=server,suppress_callback_exceptions=True,external_stylesheets=[dbc.themes.ZEPHYR])
 app.title = 'Dashboard'
 
+app.layout = html.Div([
+  dcc.Location(id='url', refresh=False),
+  html.Div(id='page-content')])
+
+centered= {
+      'position': 'fixed',
+      'top': '50%',
+      'left': '50%',
+      'transform': 'translate(-50%, -50%)',
+      'textAlign':'center'
+    }
+
+############# index_page ########################
+index_page=html.Div([dbc.NavbarSimple(
+    children=[
+        dbc.NavItem(dbc.NavLink("Sign in", href="/login_page")),
+        dbc.NavItem(dbc.NavLink("Sign up", href="#"))
+    ],
+    brand='Dashboard',
+    brand_href="/dashboard",
+    color="primary",
+    dark=True,
+),
+dbc.Container([
+    dbc.Alert(
+            [
+                html.H1('Welcome to the website traffic monitoring tool!')
+            ],
+            color="info",
+            className="d-flex align-items-center",
+        style={'margin-top':'50px'}),
+html.Div(style={'height':'100px'}),
+dbc.Row([
+    dbc.Col([html.Img(src='/assets/chart-line-solid.svg',className="img-fluid")],width=4),
+    dbc.Col([html.Img(src='/assets/chart-pie-solid.svg',className="img-fluid")],width=4),
+    dbc.Col([html.Img(src='/assets/arrows-spin-solid.svg',className='img-fluid')],width=4)
+]),
+dbc.Row([
+    dbc.Col(html.P('Forecast the incoming traffic on each website with Machine Learning models.'),width=4),
+    dbc.Col(html.P('Data Analytics in real time.'),width=4),
+    dbc.Col(html.P('Monitor model metrics in real time and trigger a retraining process whenever you feel the model is not capturing distribution shifts.'),width=4)
+])],fluid=True,style={'textAlign':'Center'})])
+
+############# login page ###################
+login_page=html.Div([
+    html.P('Username:'),
+    dbc.InputGroup([
+        dbc.Input(type='text',id='username',placeholder='Choose your username',className="mb-3")
+    ]),
+    html.P('Password:'),
+    dbc.InputGroup([
+        dbc.Input(type='password',id='password',valid=False,placeholder='Choose your password (at least 6 characters)',className="mb-3")
+    ]),
+    dbc.Button('Submit',id='btn_submit',className="mb-3",n_clicks=0)
+
+],style=centered)
+
+########## dashboard ################
 dashboard=dbc.Container([
     html.H1('MyDashboard',style={'textAlign': 'center'}),
     dcc.Tabs(id="tabs", value='tabs_value', children=[
@@ -89,17 +147,23 @@ dashboard=dbc.Container([
             dcc.Input(id='input_miscoveragerate'),   
     ],id='train_div',style={'display':'none'}),
             dbc.Container([
-            dbc.Button("Submit", id="TrainSubmit", n_clicks=0,style={'textAlign': 'center','display':'none','background-color':'green','margin-top':'10px'}),
-            html.P(id='dummy1')
+            dbc.Button("Submit", id="TrainSubmit", n_clicks=0,style={'textAlign': 'center','display':'none','background-color':'green','margin-top':'10px'})
             ],style={'textAlign':'center'})
         ],width=3,style={'textAlign':'center'}),
         dbc.Col([
              dcc.Graph(id='live-update-graph-prection')],width = 9)
     ])])],fluid=True)
 
-app.layout=html.Div([
-      html.Div(id='page-content',children=[dashboard])
-])
+########### callbacks #################
+@app.callback(Output('page-content', 'children'),
+[Input('url', 'pathname')])
+def display_page(pathname):
+    if pathname == '/login_page':
+        return login_page
+    elif pathname == '/dashboard':
+        return dashboard
+    else:
+        return index_page
 
 @app.callback(Output('interval-component','interval'),Input('my-slider', 'value'))
 def update_refresh_rate(input):
@@ -154,7 +218,7 @@ def toogle_form(n_clicks):
     else:
         return {'display':'none'},{'display':'none','textAlign': 'center','background-color':'green','textAlign': 'center','margin-top':'10px'},'Train a model',{'textAlign': 'center','background-color': '#008CBA','margin-top':'10px'}
 
-@app.callback(Output('live-update-graph-prection','figure'),Output('dummy1','children'),Input('TrainSubmit','n_clicks'),
+@app.callback(Output('live-update-graph-prection','figure'),Input('TrainSubmit','n_clicks'),
     State('input_lags','value'),
     State('input_forecastperiod','value'),
     State('input_miscoveragerate','value'),
@@ -177,9 +241,9 @@ def train_forecast(n_clicks,lags,forecastperiod,alpha,pageid):
         x_axis=[i for i in range(len(lower_bound))]
         fig.add_trace(go.Scatter(x=x_axis, y=lower_bound,name='lower bound', mode='lines+markers', line_color='blue', fill='tozerox',fillcolor='lightgray')) # fill down to xaxis
         fig.add_trace(go.Scatter(x=x_axis, y=upper_bound,name='upper bound', mode='lines+markers',line_color='blue' ,fill='tonexty',fillcolor='lightgray'))
-        return fig, r.text
+        return fig
     else:
-        return fig, ''
+        return fig
 
 if __name__ == '__main__':
     app.run_server()
