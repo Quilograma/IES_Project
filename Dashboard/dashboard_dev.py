@@ -14,11 +14,10 @@ from flask import Flask
 
 REFRESH_RATE_SECONDs=1
 server = Flask(__name__)
-app = dash.Dash(server=server,suppress_callback_exceptions=True)
+app = dash.Dash(server=server,suppress_callback_exceptions=True,external_stylesheets=[dbc.themes.ZEPHYR])
 app.title = 'Dashboard'
 
-
-app.layout = html.Div([
+dashboard=dbc.Container([
     html.H1('MyDashboard',style={'textAlign': 'center'}),
     dcc.Tabs(id="tabs", value='tabs_value', children=[
         dcc.Tab(label='Dashboard', value='tab-1'),
@@ -26,11 +25,9 @@ app.layout = html.Div([
         dcc.Tab(label='Pending tasks', value='tab-3'),
         dcc.Tab(label='User info', value='tab-4'),
     ]),
-    html.Div([
-        html.Div([
-        html.H3('Pick a desired refresh rate in seconds',style={'textAlign': 'center'}),
-       ],id = "header", className = "six column", style = {"margin-bottom": "25px"}),
-       ],className = "row flex-display"),
+    dbc.Container([
+        html.H3('Pick a desired refresh rate in seconds',style={'textAlign': 'center'})
+       ],fluid = True),
         dcc.Slider(1, 60, value=5,id='my-slider',
         marks={
         1: {'label': '1'},
@@ -39,47 +36,48 @@ app.layout = html.Div([
         40: {'label': '40'},
         60: {'label':'60'}
     }),
-
-    html.Div([
-        html.Div([
+    dbc.Container([
+        dbc.Row([
+        dbc.Col([
         html.H3(id='live-update-text-currentRR',style={'font-weight': 'bold','textAlign':'center'}),
-        html.H3(id='live-update-text',style={'textAlign': 'center'})],className = "six column", style = {"margin-bottom": "25px"}),
-        ],className = "row flex-display"),
+        html.H3(id='live-update-text',style={'textAlign': 'center'})],width=6)],className = "six column", style = {"margin-bottom": "25px"}),
+        ],fluid= True),
 
-    html.Div([
-        html.Div([
-        html.P('Most recent 10 Visitors',className = 'fix_label',style={'textAlign': 'center'}),
-        dcc.Graph(id='live-update-graph',config = {'displayModeBar': 'hover'})], className="create_container full columns")]
-        ,className="row flex-display"),
+    dbc.Container([
+        dbc.Container([
+        html.P('Most recent 10 Visitors',style={'textAlign': 'center'}),
+        dcc.Graph(id='live-update-graph',config = {'displayModeBar': 'hover'})])]),
         dcc.Interval(
             id='interval-component',
             interval=REFRESH_RATE_SECONDs*1000, # in milliseconds
             n_intervals=0
         ),
     html.H5('Data visualization',style={'textAlign': 'center'}),
-    html.Div([
-        html.Div([
-        html.P('Select page id',className = 'fix_label'),
+    dbc.Container([
+        dbc.Row([
+        dbc.Col([
+        html.P('Select page id',),
         dcc.Dropdown([i+1 for i in range(10)], '1', id='choose-page_id-dropdown'),
-        html.P('Select group by',className = 'fix_label'),
+        html.P('Select group by'),
         dcc.Dropdown(options=[
         {'label':'Hour','value':'H'},
        {'label': 'Day', 'value': 'D'},
        {'label': 'Week', 'value': 'W'},
        {'label': 'Month', 'value': 'M'},
    ], value='H', id='choose-groupby-dropdown'),
-        html.P('Filter by datetime ',className = 'fix_label'),
+        html.P('Filter by datetime '),
         dcc.DatePickerRange(
         id='filterbydate',
         end_date=datetime.datetime.now().date(),
         start_date=datetime.datetime.now().date()
-    )],className = "create_container three columns"),    
-    html.Div([
-        dcc.Graph(id='live-update-graph-timeseries')],className = "create_container nine columns")
-        ],className = "row flex-display"),
-    html.Div([
-        html.Div([
-            html.Button('Train a model',id='TrainButton',n_clicks=0,style={'textAlign': 'center','background-color': '#008CBA','margin-top':'10px'}),
+    )],width=3),    
+    dbc.Col([
+        dcc.Graph(id='live-update-graph-timeseries')],width=9)
+        ])],fluid=True),
+    dbc.Container([
+        dbc.Row([
+        dbc.Col([
+            dbc.Button('Train a model',id='TrainButton',n_clicks=0,style={'textAlign': 'center','background-color': '#008CBA','margin-top':'10px'}),
             html.Div(children=[
             html.P('Select Page Id',className='fix_label'),
             dcc.Dropdown([i+1 for i in range(10)], '1', id='input_pageid'),
@@ -90,14 +88,18 @@ app.layout = html.Div([
             html.P('Select miscoverage rate alpha',className = 'fix_label'),
             dcc.Input(id='input_miscoveragerate'),   
     ],id='train_div',style={'display':'none'}),
-            html.Div([
-            html.Button("Submit", id="TrainSubmit", n_clicks=0,style={'textAlign': 'center','display':'none','background-color':'green','margin-top':'10px'}),
+            dbc.Container([
+            dbc.Button("Submit", id="TrainSubmit", n_clicks=0,style={'textAlign': 'center','display':'none','background-color':'green','margin-top':'10px'}),
             html.P(id='dummy1')
             ],style={'textAlign':'center'})
-        ],className='create_container three columns',style={'textAlign':'center'}),
-        html.Div([
-             dcc.Graph(id='live-update-graph-prection')],className = "create_container nine columns")
-    ],className='row flex-display')],id = "mainContainer", style = {"display": "flex", "flex-direction": "column"})
+        ],width=3,style={'textAlign':'center'}),
+        dbc.Col([
+             dcc.Graph(id='live-update-graph-prection')],width = 9)
+    ])])],fluid=True)
+
+app.layout=html.Div([
+      html.Div(id='page-content',children=[dashboard])
+])
 
 @app.callback(Output('interval-component','interval'),Input('my-slider', 'value'))
 def update_refresh_rate(input):
