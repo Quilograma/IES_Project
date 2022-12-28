@@ -12,16 +12,15 @@ import dash_bootstrap_components as dbc
 from flask import Flask
 import sys
 import os
-SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(SCRIPT_DIR)
-from Kafka_consumer.Model.models import User
+from connect_mysql import cursor
 
 logged=False
 
 REFRESH_RATE_SECONDs=1
 server = Flask(__name__)
 app = dash.Dash(server=server,suppress_callback_exceptions=True,external_stylesheets=[dbc.themes.ZEPHYR])
-app.title = 'Dashboard'
 
 app.layout = html.Div([
   dcc.Location(id='url', refresh=False),
@@ -272,15 +271,21 @@ def train_forecast(n_clicks,lags,forecastperiod,alpha,pageid):
 
 def sign_up(n_clicks,username,password):
     check=False
-    pathname='#'
+    pathname='/'
 
     if n_clicks>0:
 
-        user=User.get_by_username(username)
+        cursor.execute(
+            '''
+            SELECT * FROM users
+            where username=?;
+            '''
+        ,(username))
 
-        if user is None and len(password)>6:
-            new_user=User(username,password)
-            new_user.save()
+        list_user=cursor.fetchall()
+
+        if len(list_user)== 0 and len(password)>6:
+            cursor.execute("INSERT INTO users (username,password) VALUES (?,?)", (username, password))
             check=True
             pathname='/'
 
@@ -291,15 +296,26 @@ def sign_up(n_clicks,username,password):
 
 def sign_in(n_clicks,username,password):
     check=False
-    pathname='#'
+    pathname='/home'
 
     if n_clicks>0:
-        user=User.get_by_username(username)
 
-        if user is not None and user.password==password:
-            check=True
-            pathname='/dashboard'
-            logged=True
+        cursor.execute(
+            '''
+            SELECT * FROM users
+            where username=?;
+            '''
+        ,(username))
+
+        list_user=cursor.fetchall()
+
+        if len(list_user)>0:
+            real_pw=list_user[0][0]
+
+            if password==real_pw:
+                check=True
+                pathname='/dashboard'
+                logged=True
 
     return str(check),pathname
 
