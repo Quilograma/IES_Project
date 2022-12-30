@@ -16,7 +16,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(SCRIPT_DIR)
 from connect_mysql import cursor
 
-logged=False
+logged=True
 
 REFRESH_RATE_SECONDs=1
 server = Flask(__name__)
@@ -94,14 +94,22 @@ login_page=html.Div([
 ],style=centered)
 
 ########## dashboard ################
-dashboard=dbc.Container([
-    html.H1('MyDashboard',style={'textAlign': 'center'}),
+dashboard=dbc.Container([html.H1('MyDashboard',style={'textAlign': 'center'}),
+        dcc.Interval(
+            id='interval-component',
+            interval=REFRESH_RATE_SECONDs*1000, # in milliseconds
+            n_intervals=0
+        ),
     dcc.Tabs(id="tabs", value='tabs_value', children=[
-        dcc.Tab(label='Dashboard', value='tab-1'),
-        dcc.Tab(label='Metrics', value='tab-2'),
-        dcc.Tab(label='Pending tasks', value='tab-3'),
-        dcc.Tab(label='User info', value='tab-4'),
+        dcc.Tab(label='Settings', value='tab-1'),
+        dcc.Tab(label='Data Analytics', value='tab-2'),
+        dcc.Tab(label='Forecasting',value='tab-3'),
+        dcc.Tab(label='Pending tasks', value='tab-4'),
+        dcc.Tab(label='Metrics', value='tab-5'),
     ]),
+dbc.Container(id='select-tab')])
+
+dashboard_settings=dbc.Container([
     dbc.Container([
         html.H3('Pick a desired refresh rate in seconds',style={'textAlign': 'center'})
        ],fluid = True),
@@ -123,13 +131,10 @@ dashboard=dbc.Container([
     dbc.Container([
         dbc.Container([
         html.P('Most recent 10 Visitors',style={'textAlign': 'center'}),
-        dcc.Graph(id='live-update-graph',config = {'displayModeBar': 'hover'})])]),
-        dcc.Interval(
-            id='interval-component',
-            interval=REFRESH_RATE_SECONDs*1000, # in milliseconds
-            n_intervals=0
-        ),
-    html.H5('Data visualization',style={'textAlign': 'center'}),
+        dcc.Graph(id='live-update-graph',config = {'displayModeBar': 'hover'})])])
+])
+
+dashboard_analytics=dbc.Container([
     dbc.Container([
         dbc.Row([
         dbc.Col([
@@ -150,8 +155,9 @@ dashboard=dbc.Container([
     )],width=3),    
     dbc.Col([
         dcc.Graph(id='live-update-graph-timeseries')],width=9)
-        ])],fluid=True),
-    dbc.Container([
+        ])],fluid=True)])
+
+dashboard_forecast= dbc.Container([
         dbc.Row([
         dbc.Col([
             dbc.Button('Train a model',id='TrainButton',n_clicks=0,style={'textAlign': 'center','background-color': '#008CBA','margin-top':'10px'}),
@@ -171,7 +177,7 @@ dashboard=dbc.Container([
         ],width=3,style={'textAlign':'center'}),
         dbc.Col([
              dcc.Graph(id='live-update-graph-prection')],width = 9)
-    ])])],fluid=True)
+    ])],fluid=True)
 
 ########### callbacks #################
 
@@ -187,6 +193,15 @@ def display_page(pathname):
     else:
         return index_page
 
+@app.callback(Output('select-tab','children'),Input('tabs','value'))
+def render_tab(tab):
+    if tab=='tab-1':
+        return dashboard_settings
+    elif tab=='tab-2':
+        return dashboard_analytics
+    elif tab=='tab-3':
+        return dashboard_forecast
+
 @app.callback(Output('interval-component','interval'),Input('my-slider', 'value'))
 def update_refresh_rate(input):
     return input*1000
@@ -199,7 +214,7 @@ def current_RR(input):
               Input('interval-component', 'n_intervals'))
 
 def update_graph_live(n):
-    url = 'http://myapp:5001/Visitors'
+    url = 'http://myapp:5000/Visitors'
     r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
     df_data= pd.DataFrame.from_dict(json.loads(r.text))
     df_data_sorted = df_data.sort_values(by=['id'], ascending=False)
@@ -217,7 +232,7 @@ def update_graph_timeseries(dropdown_value,groupby_drop,n,start_date,end_date):
     end_date = datetime.datetime.strptime(end_date, '%Y-%m-%d')+datetime.timedelta(days=1)
     start_date = datetime.datetime.strptime(start_date, '%Y-%m-%d')
 
-    url = 'http://myapp:5001/Visitors?page_id='+str(dropdown_value)
+    url = 'http://myapp:5000/Visitors?page_id='+str(dropdown_value)
     r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
     df_data= pd.DataFrame.from_dict(json.loads(r.text))
 
@@ -267,7 +282,7 @@ def train_forecast(n_clicks,lags,forecastperiod,alpha,pageid):
     else:
         return fig
 
-@app.callback(Output('sign_up_dummy','children'),Output('url', 'pathname'),Input('sign_up_btn_submit','n_clicks'),State('sign_up_username','value'),State('sign_up_password','value'))
+""" @app.callback(Output('sign_up_dummy','children'),Output('url', 'pathname'),Input('sign_up_btn_submit','n_clicks'),State('sign_up_username','value'),State('sign_up_password','value'))
 
 def sign_up(n_clicks,username,password):
     check=False
@@ -317,7 +332,7 @@ def sign_in(n_clicks,username,password):
                 pathname='/dashboard'
                 logged=True
 
-    return str(check),pathname
+    return str(check),pathname """
 
 if __name__ == '__main__':
     app.run_server()
