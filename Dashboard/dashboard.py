@@ -109,7 +109,7 @@ dashboard=dbc.Container([html.H1('MyDashboard',style={'textAlign': 'center'}),
     ]),
 dbc.Container(id='select-tab')])
 
-dashboard_settings=dbc.Container([
+dashboard_content=dbc.Container([
     dbc.Container([
         html.H3('Pick a desired refresh rate in seconds',style={'textAlign': 'center'})
        ],fluid = True),
@@ -125,13 +125,14 @@ dashboard_settings=dbc.Container([
         dbc.Row([
         dbc.Col([
         html.H3(id='live-update-text-currentRR',style={'font-weight': 'bold','textAlign':'center'}),
-        html.H3(id='live-update-text',style={'textAlign': 'center'})],width=6)],className = "six column", style = {"margin-bottom": "25px"}),
+        html.H3(id='live-update-text',style={'textAlign': 'center'})],width=12)],className = "six column", style = {"margin-bottom": "25px"}),
         ],fluid= True),
 
     dbc.Container([
         dbc.Container([
-        html.P('Most recent 10 Visitors',style={'textAlign': 'center'}),
-        dcc.Graph(id='live-update-graph',config = {'displayModeBar': 'hover'})])])
+        html.P('Visitors content table',style={'textAlign': 'center'}),
+        dbc.Container(id='live-update-graph'),
+        dbc.Pagination(id='pagination',active_page=1,max_value=5,fully_expanded=False, first_last=True, previous_next=True)])])
 ])
 
 dashboard_analytics=dbc.Container([
@@ -196,7 +197,7 @@ def display_page(pathname):
 @app.callback(Output('select-tab','children'),Input('tabs','value'))
 def render_tab(tab):
     if tab=='tab-1':
-        return dashboard_settings
+        return dashboard_content
     elif tab=='tab-2':
         return dashboard_analytics
     elif tab=='tab-3':
@@ -210,21 +211,33 @@ def update_refresh_rate(input):
 def current_RR(input):
     return 'Current refresh rate: {}'.format(input)
 
-@app.callback([Output('live-update-graph', 'figure'),Output('live-update-text','children')],
-              Input('interval-component', 'n_intervals'))
 
-def update_graph_live(n):
+
+@app.callback([Output('pagination','max_value'),Output('live-update-graph', 'children'),Output('live-update-text','children')],
+              Input('interval-component', 'n_intervals'),Input('pagination', 'active_page'))
+
+def update_graph_live(n,active_page):
     url = 'http://myapp:5000/Visitors'
     r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
     df_data= pd.DataFrame.from_dict(json.loads(r.text))
     df_data_sorted = df_data.sort_values(by=['id'], ascending=False)
-    df_data_sorted=df_data_sorted.iloc[:10,:]
-    fig = go.Figure(data=[go.Table(header=dict(values=list(df_data_sorted.columns)),
-                 cells=dict(values=df_data_sorted.values.T))
-                     ])
+    
     time_now=datetime.datetime.now()
     formated_time=time_now.strftime("%m-%d-%Y %H:%M:%S")
-    return fig,[html.Span('Last refreshed at {}'.format(formated_time))]
+    n_rows = df_data_sorted.shape[0]
+    n_pages=int(n_rows/50)
+    last_page=n_rows%50
+
+    if last_page>0:
+        n_pages+=1
+    if active_page<n_pages:
+        df_data_sorted=df_data_sorted.iloc[50*(active_page-1):50*active_page,:]
+    else:
+        df_data_sorted=df_data_sorted.iloc[50*(active_page-1):,:]
+    
+    table = dbc.Table.from_dataframe(df_data_sorted, striped=True, bordered=True, hover=True)
+
+    return n_pages,table,[html.Span('Last refreshed at {}'.format(formated_time))]
 
 @app.callback(Output('live-update-graph-timeseries','figure'),[Input('choose-page_id-dropdown','value'),Input('choose-groupby-dropdown','value'),Input('interval-component', 'n_intervals'),Input('filterbydate', 'start_date'),
     Input('filterbydate', 'end_date')])
