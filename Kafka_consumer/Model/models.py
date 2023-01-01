@@ -5,6 +5,26 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 from Utils.db import db
 
+class Model(db.Model):
+    __tablename__ = 'Models'
+    model_id=db.Column(db.Integer, primary_key=True)
+    model_pickle=db.Column(db.LargeBinary)
+    TrainingStart=db.Column(db.DateTime)
+    TrainingEnd=db.Column(db.DateTime)
+    page_id=db.Column(db.Integer)
+    model_params=db.Column(db.Text)
+    q_hat = db.Column(db.Float)
+    model_metrics=db.Column(db.Float)
+
+    def save(self):
+        db.session.add(self)
+        db.session.commit()
+    
+    @classmethod
+    def get_by_pageid(cls,page_id):
+        return cls.query.get_or_404(page_id)
+
+
 class Visitor(db.Model):
     __tablename__ = 'Visitors'
     id = db.Column(db.Integer, primary_key=True)

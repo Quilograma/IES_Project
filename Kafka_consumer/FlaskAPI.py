@@ -1,15 +1,19 @@
 from flask_httpauth import HTTPDigestAuth
-from Model.models import Visitor
+from Model.models import Visitor,Model
 import json
 from flask import request, Blueprint,send_from_directory,send_file
 from main import db,app
 import yaml
+import sys
 import os
 import pandas as pd
 import numpy as np
 from flask_swagger_ui import get_swaggerui_blueprint
 from sklearn.neural_network import MLPRegressor
 from sklearn.model_selection import train_test_split
+import pickle
+from datetime import datetime
+
 
 ### swagger specific ###
 SWAGGER_URL = '/docs'
@@ -91,6 +95,7 @@ def train():
     lags=int(content['lags'])
     forecastperiod=int(content['forecastperiod'])
     alpha=float(content['alpha'])
+    del content['page_id']
     
     list_visitors=Visitor.get_by_page(page_id)
     results = [obj.to_dict() for obj in list_visitors]
@@ -100,12 +105,15 @@ def train():
     df_counts.reset_index(inplace=True)
     X,y=to_supervised(df_counts['page_id'].values,n_lags=lags,n_output=forecastperiod)
     X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.1)
+    training_start=datetime.now()
     mlpr=MLPRegressor(random_state=1, max_iter=500).fit(X_train, y_train)
+    training_end=datetime.now()
     forecast=mlpr.predict(X_test)
     forecast[forecast<0]=0
     epsilon=np.abs(y_test.flatten()-forecast.flatten())
     q_hat=np.quantile(epsilon,1-alpha)
-
+    model=Model(model_pickle=pickle.dumps(mlpr),TrainingStart=training_start,TrainingEnd=training_end,page_id=page_id,model_params=json.dumps(content),q_hat=q_hat,model_metrics=np.round(np.mean(epsilon),3))
+    model.save()
     output=X_test[0].reshape(1,-1)
     forecast=mlpr.predict(output)
     print(forecast,q_hat)
