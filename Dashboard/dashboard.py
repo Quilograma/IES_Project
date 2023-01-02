@@ -16,6 +16,11 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(SCRIPT_DIR)
 from connect_mysql import cursor
 
+url = 'http://myapp:5000/Models'
+r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
+df_data = pd.DataFrame.from_dict(json.loads(r.text))
+model_table=dbc.Table.from_dataframe(df_data, striped=True, bordered=True, hover=True)
+
 logged=True
 
 REFRESH_RATE_SECONDs=1
@@ -94,20 +99,20 @@ login_page=html.Div([
 ],style=centered)
 
 ########## dashboard ################
-dashboard=dbc.Container([html.H1('MyDashboard',style={'textAlign': 'center'}),
+dashboard=dbc.Container([
         dcc.Interval(
             id='interval-component',
             interval=REFRESH_RATE_SECONDs*1000, # in milliseconds
             n_intervals=0
         ),
-    dcc.Tabs(id="tabs", value='tabs_value', children=[
-        dcc.Tab(label='Settings', value='tab-1'),
-        dcc.Tab(label='Data Analytics', value='tab-2'),
-        dcc.Tab(label='Forecasting',value='tab-3'),
-        dcc.Tab(label='Pending tasks', value='tab-4'),
-        dcc.Tab(label='Metrics', value='tab-5'),
-    ]),
-dbc.Container(id='select-tab')])
+    dbc.Tabs(id="tabs", children=[
+        dbc.Tab(label='Data Table', tab_id='tab-1'),
+        dbc.Tab(label='Data Analytics', tab_id='tab-2'),
+        dbc.Tab(label='Training', tab_id='tab-3'),
+        dbc.Tab(label='Forecasting',tab_id='tab-4'),
+        dbc.Tab(label='Models historic', tab_id='tab-5'),
+    ],active_tab="tab-1"),
+dbc.Container(id='select-tab',className='mt-3')])
 
 dashboard_content=dbc.Container([
     dbc.Container([
@@ -158,6 +163,22 @@ dashboard_analytics=dbc.Container([
         dcc.Graph(id='live-update-graph-timeseries')],width=9)
         ])],fluid=True)])
 
+dashboard_training=dbc.Container([
+        dbc.Row([
+        dbc.Col([
+            html.P('Select Page Id'),
+            dcc.Dropdown([i+1 for i in range(10)], '1', id='input_pageid'),
+            html.P('Select number of lags'),
+            dcc.Input(id='input_lags'),
+            html.P('Select forecast period'),
+            dcc.Input(id='input_forecastperiod'),
+            html.P('Select the maximum miscoverage rate'),
+            dcc.Input(id='input_miscoveragerate',className='mb-3'),
+            dbc.Button('Submit',id='train-submit-btn',n_clicks=0,className='mt-3',style={'margin-top':'10px'})
+        ],width={"size": 6, "offset": 3})]),
+        dcc.Loading(children=html.Div(id="loading-training"),fullscreen=True)
+],style=centered)
+
 dashboard_forecast= dbc.Container([
         dbc.Row([
         dbc.Col([
@@ -180,7 +201,29 @@ dashboard_forecast= dbc.Container([
              dcc.Graph(id='live-update-graph-prection')],width = 9)
     ])],fluid=True)
 
+dashboard_modelhistoric=dbc.Container(children=[model_table])
+
 ########### callbacks #################
+
+
+@app.callback(Output('loading-training','children'),Input('train-submit-btn','n_clicks'),
+ State('input_lags','value'),
+    State('input_forecastperiod','value'),
+    State('input_miscoveragerate','value'),
+    State('input_pageid','value'))
+
+def loading_state(n_clicks,lags,forecastperiod,alpha,pageid):
+    d={}
+    d['lags']=lags
+    d['forecastperiod']=forecastperiod
+    d['alpha']=alpha
+    d['page_id']=pageid
+
+
+    if n_clicks>0:
+        url = 'http://myapp:5000/train1'
+        r = requests.post(url, auth=HTTPDigestAuth('martim', 'martimpw'),json=d,timeout=10)
+    return ''
 
 @app.callback(Output('page-content', 'children'),
 [Input('url', 'pathname')])
@@ -194,14 +237,19 @@ def display_page(pathname):
     else:
         return index_page
 
-@app.callback(Output('select-tab','children'),Input('tabs','value'))
+@app.callback(Output('select-tab','children'),Input('tabs','active_tab'))
 def render_tab(tab):
     if tab=='tab-1':
         return dashboard_content
     elif tab=='tab-2':
         return dashboard_analytics
     elif tab=='tab-3':
+        return dashboard_training
+    elif tab=='tab-4':
         return dashboard_forecast
+    elif tab=='tab-5':
+        return dashboard_modelhistoric
+
 
 @app.callback(Output('interval-component','interval'),Input('my-slider', 'value'))
 def update_refresh_rate(input):

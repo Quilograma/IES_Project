@@ -21,8 +21,15 @@ class Model(db.Model):
         db.session.commit()
     
     @classmethod
+    def get_all(cls):
+        return cls.query.all()
+    
+    @classmethod
     def get_by_pageid(cls,page_id):
         return cls.query.get_or_404(page_id)
+    
+    def to_dict(self):
+        return {'page_id':self.page_id,'TrainingStart':str(self.TrainingStart),'TrainingEnd':str(self.TrainingEnd),'model_params':self.model_params,'q_hat':self.q_hat,'MAE':self.model_metrics}
 
 
 class Visitor(db.Model):

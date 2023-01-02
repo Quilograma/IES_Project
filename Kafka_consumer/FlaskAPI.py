@@ -59,6 +59,13 @@ def get_pw(username):
         return users.get(username)
     return None
 
+@app.route('/Models',methods=['GET'])
+@auth.login_required
+def get_models():
+    list_models=Model.get_all()
+    results = [obj.to_dict() for obj in list_models]
+    return json.dumps(results)
+
 @app.route('/Visitors', methods=['GET'])
 @auth.login_required
 def get_visitors():
@@ -85,6 +92,37 @@ def get_visitors():
 def get_visitor_byid(id):
     visitor=Visitor.get_by_id(id)
     return json.dumps(visitor.to_dict())
+
+@app.route('/train1',methods=['POST'])
+@auth.login_required
+def train1():
+
+    content = json.loads(request.data)
+    page_id=int(content['page_id'])
+    lags=int(content['lags'])
+    forecastperiod=int(content['forecastperiod'])
+    alpha=float(content['alpha'])
+    del content['page_id']
+    
+    list_visitors=Visitor.get_by_page(page_id)
+    results = [obj.to_dict() for obj in list_visitors]
+    data=pd.DataFrame.from_dict(results)
+    data['accessed_at'] = pd.to_datetime(data['accessed_at'])
+    df_counts=data.groupby([pd.Grouper(key='accessed_at', freq='H')]).count()
+    df_counts.reset_index(inplace=True)
+    X,y=to_supervised(df_counts['page_id'].values,n_lags=lags,n_output=forecastperiod)
+    X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.1)
+    training_start=datetime.now()
+    mlpr=MLPRegressor(random_state=1, max_iter=500).fit(X_train, y_train)
+    training_end=datetime.now()
+    forecast=mlpr.predict(X_test)
+    forecast[forecast<0]=0
+    epsilon=np.abs(y_test.flatten()-forecast.flatten())
+    q_hat=np.quantile(epsilon,1-alpha)
+    model=Model(model_pickle=pickle.dumps(mlpr),TrainingStart=training_start,TrainingEnd=training_end,page_id=page_id,model_params=json.dumps(content),q_hat=q_hat,model_metrics=np.round(np.mean(epsilon),3))
+    model.save()
+
+    return 'Model sucessfully trained'
 
 @app.route('/train',methods=['POST'])
 @auth.login_required
