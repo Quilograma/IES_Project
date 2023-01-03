@@ -16,10 +16,6 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(SCRIPT_DIR)
 from connect_mysql import cursor
 
-url = 'http://myapp:5000/Models'
-r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
-df_data = pd.DataFrame.from_dict(json.loads(r.text))
-model_table=dbc.Table.from_dataframe(df_data, striped=True, bordered=True, hover=True)
 
 logged=True
 
@@ -72,11 +68,11 @@ dbc.Row([
 
 ############ Sign up page #################
 signup_page=html.Div([
-    html.P('Username:'),
+    dbc.Label('Username:'),
     dbc.InputGroup([
         dbc.Input(type='text',id='sign_up_username',placeholder='Choose your username',className="mb-3")
     ]),
-    html.P('Password:'),
+    dbc.Label('Password:'),
     dbc.InputGroup([
         dbc.Input(type='password',id='sign_up_password',placeholder='Choose your password (at least 6 characters)',className="mb-3")
     ]),
@@ -86,11 +82,11 @@ signup_page=html.Div([
 
 ############# login page ###################
 login_page=html.Div([
-    html.P('Username:'),
+    dbc.Label('Username:'),
     dbc.InputGroup([
         dbc.Input(type='text',id='sign_in_username',placeholder='Choose your username',className="mb-3")
     ]),
-    html.P('Password:'),
+    dbc.Label('Password:'),
     dbc.InputGroup([
         dbc.Input(type='password',id='sign_in_password',valid=False,placeholder='Choose your password (at least 6 characters)',className="mb-3")
     ]),
@@ -110,7 +106,7 @@ dashboard=dbc.Container([
         dbc.Tab(label='Data Analytics', tab_id='tab-2'),
         dbc.Tab(label='Training', tab_id='tab-3'),
         dbc.Tab(label='Forecasting',tab_id='tab-4'),
-        dbc.Tab(label='Models historic', tab_id='tab-5'),
+        dbc.Tab(label='Models history', tab_id='tab-5'),
     ],active_tab="tab-1"),
 dbc.Container(id='select-tab',className='mt-3')])
 
@@ -144,16 +140,16 @@ dashboard_analytics=dbc.Container([
     dbc.Container([
         dbc.Row([
         dbc.Col([
-        html.P('Select page id',),
+        dbc.Label('Select page id',),
         dcc.Dropdown([i+1 for i in range(10)], '1', id='choose-page_id-dropdown'),
-        html.P('Select group by'),
+        dbc.Label('Select group by'),
         dcc.Dropdown(options=[
         {'label':'Hour','value':'H'},
        {'label': 'Day', 'value': 'D'},
        {'label': 'Week', 'value': 'W'},
        {'label': 'Month', 'value': 'M'},
    ], value='H', id='choose-groupby-dropdown'),
-        html.P('Filter by datetime '),
+        dbc.Label('Filter by datetime '),
         dcc.DatePickerRange(
         id='filterbydate',
         end_date=datetime.datetime.now().date(),
@@ -166,15 +162,17 @@ dashboard_analytics=dbc.Container([
 dashboard_training=dbc.Container([
         dbc.Row([
         dbc.Col([
-            html.P('Select Page Id'),
+            dbc.Label('Select Page Id'),
             dcc.Dropdown([i+1 for i in range(10)], '1', id='input_pageid'),
-            html.P('Select number of lags'),
-            dcc.Input(id='input_lags'),
-            html.P('Select forecast period'),
-            dcc.Input(id='input_forecastperiod'),
-            html.P('Select the maximum miscoverage rate'),
-            dcc.Input(id='input_miscoveragerate',className='mb-3'),
-            dbc.Button('Submit',id='train-submit-btn',n_clicks=0,className='mt-3',style={'margin-top':'10px'})
+            dbc.Label('Select number of lags'),
+            dbc.Input(id='input_lags'),
+            dbc.Label('Select forecast period'),
+            dbc.Input(id='input_forecastperiod'),
+            dbc.Label('Select the maximum miscoverage rate'),
+            dbc.Input(id='input_miscoveragerate',className='mb-3'),
+            dbc.Container([
+            dbc.Button('Submit',id='train-submit-btn',n_clicks=0,className='mt-3')
+            ],style={'textAlign':'center'})
         ],width={"size": 6, "offset": 3})]),
         dcc.Loading(children=html.Div(id="loading-training"),fullscreen=True)
 ],style=centered)
@@ -184,13 +182,13 @@ dashboard_forecast= dbc.Container([
         dbc.Col([
             dbc.Button('Train a model',id='TrainButton',n_clicks=0,style={'textAlign': 'center','background-color': '#008CBA','margin-top':'10px'}),
             html.Div(children=[
-            html.P('Select Page Id',className='fix_label'),
+            dbc.Label('Select Page Id'),
             dcc.Dropdown([i+1 for i in range(10)], '1', id='input_pageid'),
-            html.P('Select number of lags',className='fix_label'),
+            dbc.Label('Select number of lags'),
             dcc.Input(id='input_lags'),
-            html.P('Select forecast period',className = 'fix_label'),
+            dbc.Label('Select forecast period'),
             dcc.Input(id='input_forecastperiod'),
-            html.P('Select miscoverage rate alpha',className = 'fix_label'),
+            dbc.Label('Select miscoverage rate alpha'),
             dcc.Input(id='input_miscoveragerate'),   
     ],id='train_div',style={'display':'none'}),
             dbc.Container([
@@ -201,9 +199,17 @@ dashboard_forecast= dbc.Container([
              dcc.Graph(id='live-update-graph-prection')],width = 9)
     ])],fluid=True)
 
-dashboard_modelhistoric=dbc.Container(children=[model_table])
+dashboard_modelhistoric=dbc.Container([dcc.Dropdown([i+1 for i in range(10)], '1', id='input_pageid_history',className='mb-3'),dbc.Container(id='model-container')])
 
 ########### callbacks #################
+
+@app.callback(Output('model-container','children'),Input('interval-component', 'n_intervals'),Input('input_pageid_history','value'))
+def filter_by_pageid(n,pageid):
+        url = 'http://myapp:5000/Models/'+str(pageid)
+        r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
+        df_data = pd.DataFrame.from_dict(json.loads(r.text))
+        model_table=dbc.Table.from_dataframe(df_data, striped=True, bordered=True, hover=True)
+        return model_table
 
 
 @app.callback(Output('loading-training','children'),Input('train-submit-btn','n_clicks'),

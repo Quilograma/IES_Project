@@ -59,10 +59,10 @@ def get_pw(username):
         return users.get(username)
     return None
 
-@app.route('/Models',methods=['GET'])
+@app.route('/Models/<int:pageid>',methods=['GET'])
 @auth.login_required
-def get_models():
-    list_models=Model.get_all()
+def get_models(pageid):
+    list_models=Model.get_by_pageid(pageid)
     results = [obj.to_dict() for obj in list_models]
     return json.dumps(results)
 

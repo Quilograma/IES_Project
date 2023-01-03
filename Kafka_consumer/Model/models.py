@@ -25,8 +25,8 @@ class Model(db.Model):
         return cls.query.all()
     
     @classmethod
-    def get_by_pageid(cls,page_id):
-        return cls.query.get_or_404(page_id)
+    def get_by_pageid(cls,_page_id):
+        return cls.query.filter_by(page_id=_page_id).all()
     
     def to_dict(self):
         return {'page_id':self.page_id,'TrainingStart':str(self.TrainingStart),'TrainingEnd':str(self.TrainingEnd),'model_params':self.model_params,'q_hat':self.q_hat,'MAE':self.model_metrics}
