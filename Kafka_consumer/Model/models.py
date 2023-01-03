@@ -1,3 +1,4 @@
+from sqlalchemy import text
 import sys
 import os
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -15,10 +16,16 @@ class Model(db.Model):
     model_params=db.Column(db.Text)
     q_hat = db.Column(db.Float)
     model_metrics=db.Column(db.Float)
+    active= db.Column(db.Boolean)
+
 
     def save(self):
         db.session.add(self)
         db.session.commit()
+
+    @classmethod
+    def unactivate(cls,_page_id):
+        cls.query.filter_by(page_id=_page_id).update(dict(active=False))
     
     @classmethod
     def get_all(cls):
@@ -28,8 +35,12 @@ class Model(db.Model):
     def get_by_pageid(cls,_page_id):
         return cls.query.filter_by(page_id=_page_id).all()
     
+    @classmethod
+    def get_by_pageid_active(cls,_page_id,_active):
+        return cls.query.filter_by(page_id=_page_id,active=_active).first()
+    
     def to_dict(self):
-        return {'page_id':self.page_id,'TrainingStart':str(self.TrainingStart),'TrainingEnd':str(self.TrainingEnd),'model_params':self.model_params,'q_hat':self.q_hat,'MAE':self.model_metrics}
+        return {'page_id':self.page_id,'TrainingStart':str(self.TrainingStart),'TrainingEnd':str(self.TrainingEnd),'model_params':self.model_params,'q_hat':self.q_hat,'MAE':self.model_metrics,'active':str(self.active)}
 
 
 class Visitor(db.Model):

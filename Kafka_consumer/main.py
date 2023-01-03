@@ -8,9 +8,6 @@ from flask_httpauth import HTTPDigestAuth
 from flask_sqlalchemy import SQLAlchemy
 db.init_app(app)
 
-
-
-
 if __name__ == '__main__':
     with app.app_context():
         print('Available topics to consume: ', c.list_topics().topics)

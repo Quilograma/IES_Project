@@ -173,43 +173,55 @@ dashboard_training=dbc.Container([
             dbc.Container([
             dbc.Button('Submit',id='train-submit-btn',n_clicks=0,className='mt-3')
             ],style={'textAlign':'center'})
-        ],width={"size": 6, "offset": 3})]),
+        ],width={"size": 4, "offset": 4})]),
         dcc.Loading(children=html.Div(id="loading-training"),fullscreen=True)
 ],style=centered)
 
-dashboard_forecast= dbc.Container([
-        dbc.Row([
-        dbc.Col([
-            dbc.Button('Train a model',id='TrainButton',n_clicks=0,style={'textAlign': 'center','background-color': '#008CBA','margin-top':'10px'}),
-            html.Div(children=[
-            dbc.Label('Select Page Id'),
-            dcc.Dropdown([i+1 for i in range(10)], '1', id='input_pageid'),
-            dbc.Label('Select number of lags'),
-            dcc.Input(id='input_lags'),
-            dbc.Label('Select forecast period'),
-            dcc.Input(id='input_forecastperiod'),
-            dbc.Label('Select miscoverage rate alpha'),
-            dcc.Input(id='input_miscoveragerate'),   
-    ],id='train_div',style={'display':'none'}),
-            dbc.Container([
-            dbc.Button("Submit", id="TrainSubmit", n_clicks=0,style={'textAlign': 'center','display':'none','background-color':'green','margin-top':'10px'})
-            ],style={'textAlign':'center'})
-        ],width=3,style={'textAlign':'center'}),
-        dbc.Col([
-             dcc.Graph(id='live-update-graph-prection')],width = 9)
-    ])],fluid=True)
+dashboard_forecast= dbc.Container(dbc.Row(dbc.Col([dbc.Label('Select Page id'),dcc.Dropdown([i+1 for i in range(10)], '1', id='input_pageid_forecast'), dbc.Container([
+            dbc.Button('Forecast',color='danger',id='forecast-submit-btn',n_clicks=0,className='mt-3')
+            ],style={'textAlign':'center'}),dbc.Container(id='forecast-txt')],width={"size": 4, "offset": 4})))
 
-dashboard_modelhistoric=dbc.Container([dcc.Dropdown([i+1 for i in range(10)], '1', id='input_pageid_history',className='mb-3'),dbc.Container(id='model-container')])
+dashboard_modelhistoric=dbc.Container([dbc.Label('Select page id'),
+dcc.Dropdown([i+1 for i in range(10)], '1', id='input_pageid_history',className='mb-3'),
+dbc.Container(id='model-container'), 
+dbc.Pagination(id='pagination-model-history',active_page=1,className='mt-3',max_value=5,fully_expanded=False, first_last=True, previous_next=True)])
 
 ########### callbacks #################
 
-@app.callback(Output('model-container','children'),Input('interval-component', 'n_intervals'),Input('input_pageid_history','value'))
-def filter_by_pageid(n,pageid):
+@app.callback(Output('model-container','children'),Output('pagination-model-history','max_value'),Input('pagination-model-history','active_page'),Input('interval-component', 'n_intervals'),Input('input_pageid_history','value'))
+def filter_by_pageid(active_page,n,pageid):
         url = 'http://myapp:5000/Models/'+str(pageid)
         r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
-        df_data = pd.DataFrame.from_dict(json.loads(r.text))
-        model_table=dbc.Table.from_dataframe(df_data, striped=True, bordered=True, hover=True)
-        return model_table
+        model_table = pd.DataFrame.from_dict(json.loads(r.text))
+        n_rows=model_table.shape[0]
+
+        if n_rows==0:
+            return dbc.Alert(
+            [
+                html.H1('There are no models for page id {}'.format(pageid))
+            ],
+            color="info",
+            className="mt-3"),1
+        else:
+
+            model_table['TrainingStart']=pd.to_datetime(model_table['TrainingStart'])
+            model_table_sorted = model_table.sort_values(by=['TrainingStart'], ascending=False)
+            n_pages=int(n_rows/50)
+            last_page=n_rows%50
+
+            if last_page>0:
+                n_pages+=1
+            
+            if active_page<n_pages:
+                model_table_sorted=model_table_sorted.iloc[50*(active_page-1):50*active_page,:]
+            else:
+                model_table_sorted=model_table_sorted.iloc[50*(active_page-1):,:]
+        
+            model_table_sorted['TrainingStart']=model_table_sorted['TrainingStart'].apply(lambda x: x.strftime("%m-%d-%Y %H:%M:%S"))
+
+            model_table_sorted_bootstrap=dbc.Table.from_dataframe(model_table_sorted, striped=True, bordered=True, hover=True)
+        
+            return model_table_sorted_bootstrap,n_pages
 
 
 @app.callback(Output('loading-training','children'),Input('train-submit-btn','n_clicks'),
@@ -225,9 +237,8 @@ def loading_state(n_clicks,lags,forecastperiod,alpha,pageid):
     d['alpha']=alpha
     d['page_id']=pageid
 
-
     if n_clicks>0:
-        url = 'http://myapp:5000/train1'
+        url = 'http://myapp:5000/train'
         r = requests.post(url, auth=HTTPDigestAuth('martim', 'martimpw'),json=d,timeout=10)
     return ''
 
@@ -315,6 +326,17 @@ def update_graph_timeseries(dropdown_value,groupby_drop,n,start_date,end_date):
     fig.update_layout(xaxis_range=[df_counts['accessed_at'].min(),formated_time])
     return fig
 
+@app.callback(Output('forecast-txt','children'),Input('forecast-submit-btn','n_clicks'),Input('input_pageid_forecast','value'))
+def forecast(n_clicks,pageid):
+
+    if n_clicks>0:
+        url = 'http://myapp:5000/forecast/'+str(pageid)
+        r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
+        return r.text
+    else:
+        return ''
+
+"""
 @app.callback(Output('train_div','style'),Output('TrainSubmit','style'),Output('TrainButton','children'),Output('TrainButton','style'),[Input('TrainButton','n_clicks')])
 def toogle_form(n_clicks):
     if n_clicks%2!=0:
@@ -348,6 +370,7 @@ def train_forecast(n_clicks,lags,forecastperiod,alpha,pageid):
         return fig
     else:
         return fig
+"""
 
 """ @app.callback(Output('sign_up_dummy','children'),Output('url', 'pathname'),Input('sign_up_btn_submit','n_clicks'),State('sign_up_username','value'),State('sign_up_password','value'))
 

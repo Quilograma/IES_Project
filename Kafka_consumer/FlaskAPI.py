@@ -93,37 +93,6 @@ def get_visitor_byid(id):
     visitor=Visitor.get_by_id(id)
     return json.dumps(visitor.to_dict())
 
-@app.route('/train1',methods=['POST'])
-@auth.login_required
-def train1():
-
-    content = json.loads(request.data)
-    page_id=int(content['page_id'])
-    lags=int(content['lags'])
-    forecastperiod=int(content['forecastperiod'])
-    alpha=float(content['alpha'])
-    del content['page_id']
-    
-    list_visitors=Visitor.get_by_page(page_id)
-    results = [obj.to_dict() for obj in list_visitors]
-    data=pd.DataFrame.from_dict(results)
-    data['accessed_at'] = pd.to_datetime(data['accessed_at'])
-    df_counts=data.groupby([pd.Grouper(key='accessed_at', freq='H')]).count()
-    df_counts.reset_index(inplace=True)
-    X,y=to_supervised(df_counts['page_id'].values,n_lags=lags,n_output=forecastperiod)
-    X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.1)
-    training_start=datetime.now()
-    mlpr=MLPRegressor(random_state=1, max_iter=500).fit(X_train, y_train)
-    training_end=datetime.now()
-    forecast=mlpr.predict(X_test)
-    forecast[forecast<0]=0
-    epsilon=np.abs(y_test.flatten()-forecast.flatten())
-    q_hat=np.quantile(epsilon,1-alpha)
-    model=Model(model_pickle=pickle.dumps(mlpr),TrainingStart=training_start,TrainingEnd=training_end,page_id=page_id,model_params=json.dumps(content),q_hat=q_hat,model_metrics=np.round(np.mean(epsilon),3))
-    model.save()
-
-    return 'Model sucessfully trained'
-
 @app.route('/train',methods=['POST'])
 @auth.login_required
 def train():
@@ -150,18 +119,38 @@ def train():
     forecast[forecast<0]=0
     epsilon=np.abs(y_test.flatten()-forecast.flatten())
     q_hat=np.quantile(epsilon,1-alpha)
-    model=Model(model_pickle=pickle.dumps(mlpr),TrainingStart=training_start,TrainingEnd=training_end,page_id=page_id,model_params=json.dumps(content),q_hat=q_hat,model_metrics=np.round(np.mean(epsilon),3))
+
+    Model.unactivate(page_id)
+    model=Model(model_pickle=pickle.dumps(mlpr),TrainingStart=training_start,TrainingEnd=training_end,page_id=page_id,model_params=json.dumps(content),q_hat=q_hat,model_metrics=np.round(np.mean(epsilon),3),active=True)
     model.save()
-    output=X_test[0].reshape(1,-1)
-    forecast=mlpr.predict(output)
-    print(forecast,q_hat)
+
+    return 'Model sucessfully trained'
+
+@app.route('/forecast/<int:pageid>',methods=['GET'])
+@auth.login_required
+def forecast(pageid):
+    model=Model.get_by_pageid_active(pageid,True)
+    mlpr=pickle.loads(model.model_pickle)
+    d=json.loads(model.model_params)
+    lags=int(d['lags'])
+    q_hat=model.q_hat
+
+    
+    list_visitors=Visitor.get_by_page(pageid)
+    results = [obj.to_dict() for obj in list_visitors]
+    data=pd.DataFrame.from_dict(results)
+    data['accessed_at'] = pd.to_datetime(data['accessed_at'])
+    df_counts=data.groupby([pd.Grouper(key='accessed_at', freq='H')]).count()
+    df_counts.reset_index(inplace=True)
+    timeseries=df_counts['page_id'].values
+    input=timeseries[-lags:].reshape(1,-1)
+    forecast=mlpr.predict(input)
     lower_bound=forecast[0]-q_hat
     upper_bound=forecast[0]+q_hat
     lower_bound = list(lower_bound.astype('float64'))
     upper_bound= list(upper_bound.astype('float64'))
 
-    r={'lower_bound':lower_bound,'upper_bound':upper_bound}
-
+    r={'forecast':list(forecast[0].astype('float64')),'lower_bound':lower_bound,'upper_bound':upper_bound}
 
     return json.dumps(r)
 
