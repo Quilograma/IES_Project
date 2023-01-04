@@ -6,3 +6,4 @@ dash-bootstrap-components
 flask
 gunicorn
 mysql-connector
+seaborn

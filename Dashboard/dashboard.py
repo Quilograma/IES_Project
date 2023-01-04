@@ -10,6 +10,11 @@ import pandas as pd
 import datetime
 import dash_bootstrap_components as dbc
 from flask import Flask
+import matplotlib.pyplot as plt
+import seaborn as sns
+plt.rcParams.update({'font.size': 25})
+plt.rcParams["figure.figsize"] = (15,8)
+sns.set_style("darkgrid", {'axes.grid' : True})
 import sys
 import os
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -177,9 +182,9 @@ dashboard_training=dbc.Container([
         dcc.Loading(children=html.Div(id="loading-training"),fullscreen=True)
 ],style=centered)
 
-dashboard_forecast= dbc.Container(dbc.Row(dbc.Col([dbc.Label('Select Page id'),dcc.Dropdown([i+1 for i in range(10)], '1', id='input_pageid_forecast'), dbc.Container([
+dashboard_forecast= dbc.Container([dbc.Row(dbc.Col([dbc.Label('Select Page id'),dcc.Dropdown([i+1 for i in range(10)], '1', id='input_pageid_forecast'), dbc.Container([
             dbc.Button('Forecast',color='danger',id='forecast-submit-btn',n_clicks=0,className='mt-3')
-            ],style={'textAlign':'center'}),dbc.Container(id='forecast-txt')],width={"size": 4, "offset": 4})))
+            ],style={'textAlign':'center'}),dcc.Download(id="download-dataframe-forecast-csv")],width={"size": 4, "offset": 4})),dbc.Container(id='forecast-txt')])
 
 dashboard_modelhistoric=dbc.Container([dbc.Label('Select page id'),
 dcc.Dropdown([i+1 for i in range(10)], '1', id='input_pageid_history',className='mb-3'),
@@ -326,15 +331,29 @@ def update_graph_timeseries(dropdown_value,groupby_drop,n,start_date,end_date):
     fig.update_layout(xaxis_range=[df_counts['accessed_at'].min(),formated_time])
     return fig
 
-@app.callback(Output('forecast-txt','children'),Input('forecast-submit-btn','n_clicks'),Input('input_pageid_forecast','value'))
+@app.callback(Output('download-dataframe-forecast-csv','data'),Output('forecast-txt','children'),Input('forecast-submit-btn','n_clicks'),State('input_pageid_forecast','value'),prevent_initial_call=True)
 def forecast(n_clicks,pageid):
+    url = 'http://myapp:5000/forecast/'+str(pageid)
+    r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
+    data_dic=json.loads(r.text)
+    historic=data_dic[0]
+    forecast=data_dic[1]
 
-    if n_clicks>0:
-        url = 'http://myapp:5000/forecast/'+str(pageid)
-        r = requests.get(url, auth=HTTPDigestAuth('martim', 'martimpw'),timeout=10)
-        return r.text
-    else:
-        return ''
+
+    forecast_df=pd.DataFrame.from_dict(forecast)
+
+
+    plt.plot(forecast['timestamp'],forecast['forecast'],label='Point forecast')
+
+    plt.fill_between(forecast['timestamp'],forecast['lower_bound'],forecast['upper_bound'],
+                    color='k', alpha=.15,label='Prediction interval')
+    plt.legend()
+
+    path=r'./assets/tmp.png'
+    plt.savefig(path)
+    return dcc.send_data_frame(forecast_df.to_csv, "forecast_page_id_{}.csv".format(pageid)),html.Img(src='/assets/tmp.png', className="img-fluid")
+
+
 
 """
 @app.callback(Output('train_div','style'),Output('TrainSubmit','style'),Output('TrainButton','children'),Output('TrainButton','style'),[Input('TrainButton','n_clicks')])

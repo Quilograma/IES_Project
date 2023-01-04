@@ -12,7 +12,7 @@ from flask_swagger_ui import get_swaggerui_blueprint
 from sklearn.neural_network import MLPRegressor
 from sklearn.model_selection import train_test_split
 import pickle
-from datetime import datetime
+from datetime import datetime,timedelta
 
 
 ### swagger specific ###
@@ -142,17 +142,26 @@ def forecast(pageid):
     data['accessed_at'] = pd.to_datetime(data['accessed_at'])
     df_counts=data.groupby([pd.Grouper(key='accessed_at', freq='H')]).count()
     df_counts.reset_index(inplace=True)
+    df_counts['accessed_at']=df_counts['accessed_at'].apply(lambda x: x.strftime("%m-%d-%Y %H:%M:%S"))
+    x = datetime.now()
+    y = datetime(x.year,x.month,x.day,x.hour)
+
+    accessed_at_input=[str(y + timedelta(hours=i+1)) for i in range(lags)]
     timeseries=df_counts['page_id'].values
     input=timeseries[-lags:].reshape(1,-1)
+
     forecast=mlpr.predict(input)
     lower_bound=forecast[0]-q_hat
     upper_bound=forecast[0]+q_hat
     lower_bound = list(lower_bound.astype('float64'))
     upper_bound= list(upper_bound.astype('float64'))
 
-    r={'forecast':list(forecast[0].astype('float64')),'lower_bound':lower_bound,'upper_bound':upper_bound}
 
-    return json.dumps(r)
+    r={'timestamp':list(accessed_at_input),'forecast':list(forecast[0].astype('float64')),'lower_bound':lower_bound,'upper_bound':upper_bound}
+    
+    historic={'timestamp':list(df_counts['accessed_at'].values),'values':list(timeseries.astype('float64'))}
+
+    return json.dumps([historic,r])
 
 @app.route("/docs/swagger.json")
 def specs():
