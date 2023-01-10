@@ -54,7 +54,7 @@ index_page=html.Div([dbc.NavbarSimple(
 dbc.Container([
     dbc.Alert(
             [
-                html.H1('Welcome to the website traffic monitoring tool!')
+                html.H1('Welcome to the website traffic monitoring tool!!!')
             ],
             color="info",
             className="d-flex align-items-center",
