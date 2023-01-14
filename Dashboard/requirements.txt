@@ -7,3 +7,9 @@ flask
 gunicorn
 mysql-connector
 seaborn
+Flask-Bcrypt
+Flask-Login
+pyyaml
+sqlalchemy
+flask_sqlalchemy
+pymysql

@@ -14,3 +14,7 @@ RUN sed -i -e 's/\r$//' run.sh
 
 CMD ["bash", "-c", "./run.sh"]
 
+# CMD [ "gunicorn", "--workers=5", "-b 0.0.0.0:5000", "FlaskAPI:app"]
+
+# CMD ["bash", "-c", "../../run.sh"]
+

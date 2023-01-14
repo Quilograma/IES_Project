@@ -15,18 +15,64 @@ import seaborn as sns
 plt.rcParams.update({'font.size': 25})
 plt.rcParams["figure.figsize"] = (15,8)
 sns.set_style("darkgrid", {'axes.grid' : True})
-import sys
+import sys, yaml
 import os
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(SCRIPT_DIR)
-from connect_mysql import cursor
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin, login_user, LoginManager, login_required, logout_user, current_user
+from flask_bcrypt import Bcrypt
+
+with open(os.path.join(os.path.dirname(__file__), 'db_conn.yml'), 'r') as f:
+    try:
+        db_conn=yaml.safe_load(f)
+    except yaml.YAMLError as exc:
+        print(exc)
 
 
-logged=True
+logged = False
 
 REFRESH_RATE_SECONDs=1
 server = Flask(__name__)
+connection_str='mysql+pymysql://'+db_conn['mysql_user']+':'+db_conn['mysql_password']+'@'+db_conn['mysql_host']+'/'+db_conn['mysql_db']
+server.config['SECRET_KEY'] = os.urandom(24)
+server.config['SQLALCHEMY_DATABASE_URI']=connection_str
+db = SQLAlchemy(server)
+bcrypt = Bcrypt(server)
+
+login_manager = LoginManager()
+login_manager.init_app(server)
+login_manager.login_view = 'login'
+
 app = dash.Dash(server=server,suppress_callback_exceptions=True,external_stylesheets=[dbc.themes.ZEPHYR])
+
+class User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(20), nullable=False, unique=True)
+    password = db.Column(db.String(80), nullable=False)
+
+    def save(self):
+        db.session.add(self)
+        db.session.commit()
+
+    @classmethod
+    def validate_user(cls,_username):
+        existing_user_username = cls.query.filter_by(
+            username=_username).all()
+        
+        if len(existing_user_username)==0:
+            return True
+        else:
+            return False
+    
+    @classmethod
+    def find_user_by_username(cls,_username):
+
+        return cls.query.filter_by(username=_username).first()
+        
+
+with server.app_context():
+    db.create_all()
 
 app.layout = html.Div([
   dcc.Location(id='url', refresh=False),
@@ -44,7 +90,7 @@ centered= {
 index_page=html.Div([dbc.NavbarSimple(
     children=[
         dbc.NavItem(dbc.NavLink("Sign in", href="/login_page")),
-        dbc.NavItem(dbc.NavLink("Sign up", href="/sign_up"))
+        dbc.NavItem(dbc.NavLink("Sign up", href="/signup_page"))
     ],
     brand='Dashboard',
     brand_href="/dashboard",
@@ -93,7 +139,7 @@ login_page=html.Div([
     ]),
     dbc.Label('Password:'),
     dbc.InputGroup([
-        dbc.Input(type='password',id='sign_in_password',valid=False,placeholder='Choose your password (at least 6 characters)',className="mb-3")
+        dbc.Input(type='password',id='sign_in_password',placeholder='Choose your password (at least 6 characters)',className="mb-3")
     ]),
     dbc.Button('Submit',id='sign_in_btn_submit',className="mb-3",n_clicks=0),
     html.Div(id='sign_in_dummy')
@@ -192,6 +238,39 @@ dbc.Container(id='model-container'),
 dbc.Pagination(id='pagination-model-history',active_page=1,className='mt-3',max_value=5,fully_expanded=False, first_last=True, previous_next=True)])
 
 ########### callbacks #################
+@app.callback([Output('url','pathname'),Output('sign_in_dummy','children')],State('sign_in_username','value'),State('sign_in_password','value'),Input('sign_in_btn_submit','n_clicks'),prevent_initial_call=True)
+def login(_username,_password,n_clicks):
+
+    user_not_exists = User.validate_user(_username)
+
+    user = User.find_user_by_username(_username)
+
+    if user_not_exists==False:
+        if bcrypt.check_password_hash(user.password, _password):
+            global logged
+            logged = True
+            return ['/dashboard','']
+        else:
+            ['','Sorry, username and/or password are incorrect.']
+    else:
+        return ['','Sorry, username and/or password are incorrect.']
+
+
+
+@app.callback(Output('sign_up_dummy','children'),State('sign_up_username','value'),State('sign_up_password','value'),Input('sign_up_btn_submit','n_clicks'),prevent_initial_call=True)
+def sign_up(_username,_password,n_clicks):
+
+    user_not_exists = User.validate_user(_username)
+
+    if user_not_exists:
+
+        hashed_password = bcrypt.generate_password_hash(_password)
+        user = User(username=_username,password=hashed_password)
+        user.save()
+        return 'Account created successfully!'
+
+    else:
+        return 'Sorry but username: {} is already taken!'.format(_username)
 
 @app.callback(Output('model-container','children'),Output('pagination-model-history','max_value'),Input('pagination-model-history','active_page'),Input('interval-component', 'n_intervals'),Input('input_pageid_history','value'))
 def filter_by_pageid(active_page,n,pageid):
@@ -233,7 +312,7 @@ def filter_by_pageid(active_page,n,pageid):
  State('input_lags','value'),
     State('input_forecastperiod','value'),
     State('input_miscoveragerate','value'),
-    State('input_pageid','value'))
+    State('input_pageid','value'),prevent_initial_call=True)
 
 def loading_state(n_clicks,lags,forecastperiod,alpha,pageid):
     d={}
@@ -241,10 +320,8 @@ def loading_state(n_clicks,lags,forecastperiod,alpha,pageid):
     d['forecastperiod']=forecastperiod
     d['alpha']=alpha
     d['page_id']=pageid
-
-    if n_clicks>0:
-        url = 'http://myapp:5000/train'
-        r = requests.post(url, auth=HTTPDigestAuth('martim', 'martimpw'),json=d,timeout=10)
+    url = 'http://myapp:5000/train'
+    r = requests.post(url, auth=HTTPDigestAuth('martim', 'martimpw'),json=d,timeout=10)
     return ''
 
 @app.callback(Output('page-content', 'children'),
@@ -254,7 +331,7 @@ def display_page(pathname):
         return login_page
     elif pathname == '/dashboard' and logged:
         return dashboard
-    elif pathname == 'signup_page':
+    elif pathname == '/signup_page':
         return signup_page
     else:
         return index_page
